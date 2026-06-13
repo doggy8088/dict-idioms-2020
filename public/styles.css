@@ -311,7 +311,6 @@ h1 {
 .link-button:focus-visible,
 input:focus-visible,
 .mini-list button:focus-visible,
-.open-card-button:focus-visible,
 .pronunciation:focus-visible {
   outline: 3px solid rgba(169, 54, 40, 0.28);
   outline-offset: 3px;
@@ -558,6 +557,8 @@ input:focus-visible,
 }
 
 .idiom-card {
+  display: flex;
+  flex-direction: column;
   padding: 24px;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
@@ -577,6 +578,15 @@ input:focus-visible,
   inset: 0 0 auto;
   height: 7px;
   background: linear-gradient(90deg, var(--seal), var(--sun), var(--moss));
+}
+
+.idiom-card__top {
+  display: block;
+  padding-right: clamp(94px, 22%, 132px);
+}
+
+.idiom-card__header {
+  min-width: 0;
 }
 
 .idiom-card__number {
@@ -660,14 +670,12 @@ input:focus-visible,
 
 .favorite-button {
   flex: 0 0 auto;
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 2;
   padding: 0.54rem 0.76rem;
   color: var(--seal-dark);
-}
-
-.open-card-button {
-  margin-top: 12px;
-  padding: 0.58rem 0.92rem;
-  color: var(--lake);
 }
 
 .favorite-button.is-saved {
@@ -700,17 +708,19 @@ input:focus-visible,
   font-size: 0.8rem;
 }
 
-.open-card-button {
-  color: var(--seal-dark);
-  border: 1px solid rgba(169, 54, 40, 0.18);
-  border-radius: 999px;
-  background: rgba(169, 54, 40, 0.06);
+.card-detail-hint {
+  align-self: flex-end;
+  margin: auto 0 0;
+  padding-top: 18px;
+  color: var(--muted);
+  font-size: 0.82rem;
   font-weight: 500;
+  line-height: 1.45;
+  text-align: right;
 }
 
-.open-card-button:hover {
-  color: #fffaf0;
-  background: linear-gradient(135deg, var(--seal), var(--seal-dark));
+.idiom-card:hover .card-detail-hint {
+  color: var(--seal-dark);
 }
 
 .detail-body {

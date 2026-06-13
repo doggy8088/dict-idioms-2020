@@ -263,7 +263,7 @@ function createCard(item, index) {
   card.style.animationDelay = `${Math.min(index * 35, 420)}ms`;
   card.querySelector(".idiom-card__number").textContent = `編號 ${item.編號 || "未載明"}`;
   card.querySelector("h3").textContent = item.成語 || "未命名成語";
-  setupPronunciationToggle(card.querySelector(".pronunciation"), item);
+  setupPronunciationToggle(card.querySelector(".pronunciation"), item, { primaryOnly: true });
   card.querySelector(".meaning").innerHTML = renderLinkedText(firstMeaning(item.釋義) || "此條目未提供釋義。");
 
   const favoriteButton = card.querySelector(".favorite-button");
@@ -275,13 +275,8 @@ function createCard(item, index) {
     toggleFavorite(item);
   });
 
-  card.querySelector(".open-card-button").addEventListener("click", event => {
-    event.stopPropagation();
-    openIdiomModal(item);
-  });
-
   card.addEventListener("click", event => {
-    if (event.target.closest("button,.favorite-button,.open-card-button")) return;
+    if (event.target.closest("button")) return;
     openIdiomModal(item);
   });
 
@@ -997,11 +992,11 @@ function renderHighlightedPlainText(text, highlightTerm = "") {
   return html;
 }
 
-function setupPronunciationToggle(button, item) {
+function setupPronunciationToggle(button, item, options = {}) {
   const zhuyin = cleanText(item.注音);
   const pinyin = cleanText(item.漢語拼音);
   const hasBoth = Boolean(zhuyin && pinyin);
-  button._pronunciation = { zhuyin, pinyin, hasBoth };
+  button._pronunciation = { zhuyin, pinyin, hasBoth, primaryOnly: Boolean(options.primaryOnly) };
 
   button.onclick = event => {
     event.stopPropagation();
@@ -1016,15 +1011,16 @@ function renderZhuyinSyllables(value) {
   return renderPronunciationSyllables(value);
 }
 
-function renderPronunciationSyllables(value) {
+function renderPronunciationSyllables(value, options = {}) {
   const groups = splitPronunciationGroups(value);
-  const hasVariants = groups.length > 1 || groups.some(group => group.label);
+  const visibleGroups = options.primaryOnly ? groups.slice(0, 1) : groups;
+  const hasVariants = !options.primaryOnly && (groups.length > 1 || groups.some(group => group.label));
 
-  return groups.map((group, index) => {
+  return visibleGroups.map((group, index) => {
     const syllables = group.syllables
       .map(syllable => `<span class="pronunciation__syllable">${escapeHtml(syllable)}</span>`)
       .join("");
-    const labelText = pronunciationGroupLabel(group.label, index, hasVariants);
+    const labelText = options.primaryOnly ? "" : pronunciationGroupLabel(group.label, index, hasVariants);
     const label = labelText ? `<span class="pronunciation__variant-label">${escapeHtml(labelText)}</span>` : "";
 
     return `<span class="pronunciation__group">${label}${syllables}</span>`;
@@ -1071,7 +1067,7 @@ function renderPronunciationButton(button) {
 
   button.classList.toggle("is-zhuyin", mode === "zhuyin");
   button.classList.toggle("is-pinyin", mode === "pinyin");
-  button.innerHTML = renderPronunciationSyllables(text);
+  button.innerHTML = renderPronunciationSyllables(text, { primaryOnly: data.primaryOnly });
   button.disabled = !data.hasBoth;
   button.setAttribute("aria-label", data.hasBoth ? `${label}，點擊切換${mode === "zhuyin" ? "拼音" : "注音"}` : label);
 }
