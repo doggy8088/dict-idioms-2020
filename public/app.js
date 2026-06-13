@@ -226,7 +226,7 @@ function createCard(item, index) {
   card.style.animationDelay = `${Math.min(index * 35, 420)}ms`;
   card.querySelector(".idiom-card__number").textContent = `編號 ${item.編號 || "未載明"}`;
   card.querySelector("h3").textContent = item.成語 || "未命名成語";
-  card.querySelector(".pronunciation").textContent = [item.注音, item.漢語拼音].filter(Boolean).join(" / ");
+  setupPronunciationToggle(card.querySelector(".pronunciation"), item);
   card.querySelector(".meaning").textContent = firstMeaning(item.釋義) || "此條目未提供釋義。";
 
   const favoriteButton = card.querySelector(".favorite-button");
@@ -397,7 +397,7 @@ function openIdiomModal(item, andUpdateUrl = true) {
   state.openId = id;
   els.modalKind.textContent = item["主條成語／非主條成語"] || "成語條目";
   els.modalTitle.textContent = item.成語 || "未命名成語";
-  els.modalPronunciation.textContent = [item.注音, item.漢語拼音].filter(Boolean).join(" / ");
+  setupPronunciationToggle(els.modalPronunciation, item);
 
   const details = [
     block("語義說明", item["用法說明-語義說明"]),
@@ -506,6 +506,29 @@ function firstMeaning(value) {
 
 function compactText(value) {
   return cleanText(value).slice(0, 28);
+}
+
+function setupPronunciationToggle(button, item) {
+  const zhuyin = cleanText(item.注音);
+  const pinyin = cleanText(item.漢語拼音);
+  const hasBoth = Boolean(zhuyin && pinyin);
+  let mode = zhuyin ? "zhuyin" : "pinyin";
+
+  const render = () => {
+    const label = mode === "zhuyin" ? "注音" : "拼音";
+    button.textContent = mode === "zhuyin" ? zhuyin : pinyin;
+    button.disabled = !hasBoth;
+    button.setAttribute("aria-label", hasBoth ? `${label}，點擊切換${mode === "zhuyin" ? "拼音" : "注音"}` : label);
+  };
+
+  button.onclick = event => {
+    event.stopPropagation();
+    if (!hasBoth) return;
+    mode = mode === "zhuyin" ? "pinyin" : "zhuyin";
+    render();
+  };
+
+  render();
 }
 
 function randomItem(items) {

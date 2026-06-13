@@ -289,7 +289,8 @@ h1 {
 .quick-picks button:hover,
 .favorite-button:hover,
 .link-button:hover,
-.mini-list button:hover {
+.mini-list button:hover,
+.pronunciation:hover {
   transform: translateY(-3px);
 }
 
@@ -298,7 +299,8 @@ h1 {
 .quick-picks button:active,
 .favorite-button:active,
 .link-button:active,
-.mini-list button:active {
+.mini-list button:active,
+.pronunciation:active {
   transform: translateY(-1px) scale(0.99);
 }
 
@@ -309,7 +311,8 @@ h1 {
 .link-button:focus-visible,
 input:focus-visible,
 .mini-list button:focus-visible,
-summary:focus-visible {
+summary:focus-visible,
+.pronunciation:focus-visible {
   outline: 3px solid rgba(169, 54, 40, 0.28);
   outline-offset: 3px;
 }
@@ -589,9 +592,25 @@ summary:focus-visible {
 }
 
 .pronunciation {
+  display: block;
   margin: 0.75rem 0 0;
+  padding: 0;
+  border: 0;
   color: var(--lake);
+  background: transparent;
   line-height: 1.72;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: transform 160ms var(--ease-ui), color 160ms var(--ease-ui);
+}
+
+.pronunciation:disabled {
+  cursor: default;
+}
+
+.pronunciation:disabled:hover {
+  transform: none;
 }
 
 .favorite-button {
