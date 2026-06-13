@@ -407,14 +407,12 @@ function openIdiomModal(item, andUpdateUrl = true) {
     <div class="modal__actions">
       <button class="button button--primary" id="favoriteInModal" type="button">${state.favorites.has(id) ? "已收藏" : "收藏"}</button>
       <button class="button button--secondary" id="shareInModal" type="button">複製分享連結</button>
-      <button class="button button--secondary" id="openInPage" type="button">回到列表</button>
     </div>
     <div class="modal__detail">${details.join("")}</div>
   `;
 
   const favoriteInModal = els.modalContent.querySelector("#favoriteInModal");
   const shareInModal = els.modalContent.querySelector("#shareInModal");
-  const openInPage = els.modalContent.querySelector("#openInPage");
 
   if (favoriteInModal) {
     favoriteInModal.addEventListener("click", () => {
@@ -426,13 +424,6 @@ function openIdiomModal(item, andUpdateUrl = true) {
   if (shareInModal) {
     shareInModal.addEventListener("click", () => {
       navigator.clipboard?.writeText(window.location.href).catch(() => {});
-    });
-  }
-
-  if (openInPage) {
-    openInPage.addEventListener("click", () => {
-      closeIdiomModal();
-      renderResults([item]);
     });
   }
 
