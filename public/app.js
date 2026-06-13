@@ -346,7 +346,8 @@ function renderFavorites() {
 }
 
 function setDailyCard() {
-  const item = randomItem(state.idioms);
+  const mainIdioms = state.idioms.filter(item => item._main);
+  const item = randomItem(mainIdioms.length ? mainIdioms : state.idioms);
   if (!item) return;
   state.dailyItem = item;
   els.dailyIdiom.textContent = item.成語;
