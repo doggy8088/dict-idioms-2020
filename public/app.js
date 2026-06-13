@@ -8,11 +8,13 @@ const state = {
   query: "",
   filter: "all",
   openId: "",
+  dailyItem: null,
   favorites: new Set(readFavorites())
 };
 
 const els = {
   dataStatus: document.querySelector("#dataStatus"),
+  dailyCard: document.querySelector(".memory-card"),
   dailyIdiom: document.querySelector("#dailyIdiom"),
   dailyMeaning: document.querySelector("#dailyMeaning"),
   form: document.querySelector("#searchForm"),
@@ -109,6 +111,18 @@ function bindEvents() {
     renderResults([item]);
     openIdiomModal(item);
     document.querySelector("#results-title").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  els.dailyCard.addEventListener("click", () => {
+    if (state.dailyItem) openIdiomModal(state.dailyItem);
+  });
+
+  els.dailyCard.addEventListener("keydown", event => {
+    if (!state.dailyItem) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openIdiomModal(state.dailyItem);
+    }
   });
 
   els.clearFavorites.addEventListener("click", () => {
@@ -322,8 +336,12 @@ function renderFavorites() {
 function setDailyCard() {
   const item = randomItem(state.idioms);
   if (!item) return;
+  state.dailyItem = item;
   els.dailyIdiom.textContent = item.成語;
   els.dailyMeaning.textContent = firstMeaning(item.釋義) || "今天先認識這一句，再把它放進生活裡。";
+  els.dailyCard.setAttribute("tabindex", "0");
+  els.dailyCard.setAttribute("role", "button");
+  els.dailyCard.setAttribute("aria-label", `開啟今日成語卡：${item.成語}`);
 }
 
 function applySearchFromUrl() {
