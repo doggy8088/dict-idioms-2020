@@ -124,7 +124,7 @@
   </main>
 
   <footer class="site-footer">
-    <p>© 2026 本工具由 <a href="https://www.facebook.com/will.fans/" target="_blank" rel="noopener">Will 保哥的技術交流中心</a> 設計、開發與維護 | <a href="https://github.com/doggy8088/dict-idioms-2020" target="_blank" rel="noopener">GitHub</a></p>
+    <p>© 2026 <a href="https://www.facebook.com/will.fans/" target="_blank" rel="noopener">Will 保哥</a> · <a href="https://github.com/doggy8088/dict-idioms-2020" target="_blank" rel="noopener">GitHub</a></p>
   </footer>
 
   <template id="idiomTemplate">
@@ -139,10 +139,7 @@
       </div>
       <p class="meaning"></p>
       <div class="tags"></div>
-      <details>
-        <summary>看典故與用法</summary>
-        <div class="detail-body"></div>
-      </details>
+      <button class="open-card-button" type="button">看典故與用法</button>
     </article>
   </template>
 
@@ -150,7 +147,10 @@
     <div class="modal__overlay" data-close-modal></div>
     <section class="modal__dialog">
       <header class="modal__header">
-        <p class="modal__kind" id="idiomModalKind"></p>
+        <div class="modal__meta">
+          <p class="modal__kind" id="idiomModalKind"></p>
+          <p class="modal__id" id="idiomModalId"></p>
+        </div>
         <h2 id="idiomModalTitle"></h2>
         <button class="modal__subtitle pronunciation" id="idiomModalPronunciation" type="button"></button>
         <button id="idiomModalClose" class="modal__close" type="button" aria-label="關閉">關閉</button>

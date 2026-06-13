@@ -96,8 +96,11 @@
 
 資料來源為教育部語文成果入口網與教育部國語辭典公眾授權網：
 
-- 《成語典》資料下載：<https://language.moe.gov.tw/001/Upload/Files/site_content/M0001/respub/dict_idiomsdict_download.html>
-- 教育部語文成果入口網首頁：<https://language.moe.gov.tw/index>
+| 來源 | 說明 |
+| --- | --- |
+| [教育部《成語典》2020](https://dict.idioms.moe.edu.tw/) | 線上查詢與官方《成語典》內容入口。 |
+| 《成語典》[資料下載](https://language.moe.gov.tw/001/Upload/Files/site_content/M0001/respub/dict_idiomsdict_download.html) | 官方下載頁面，收錄本資料庫整理來源的原始下載檔。 |
+| [教育部語文成果入口網](https://language.moe.gov.tw/index) | 教育部語文成果與相關資源入口。 |
 
 致謝與版權說明：
 

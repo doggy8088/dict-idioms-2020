@@ -3,6 +3,13 @@ const MAX_RESULTS = 24;
 const FAVORITES_KEY = "dict-idioms-favorites";
 const PRONUNCIATION_MODE_KEY = "dict-idioms-pronunciation-mode";
 const DEFAULT_OPEN_COUNT = 6;
+const QUICK_KEYWORDS = [
+  "人心", "友情", "學習", "努力", "勇敢", "智慧",
+  "成功", "失敗", "誠實", "謙虛", "驕傲", "勤奮",
+  "懶惰", "危險", "平安", "困難", "機會", "改變",
+  "言語", "行動", "速度", "時間", "才能", "方法",
+  "家庭", "朋友", "敵人", "戰爭", "快樂", "悲傷"
+];
 
 const state = {
   idioms: [],
@@ -32,6 +39,7 @@ const els = {
   clearFavorites: document.querySelector("#clearFavorites"),
   modal: document.querySelector("#idiomModal"),
   modalKind: document.querySelector("#idiomModalKind"),
+  modalId: document.querySelector("#idiomModalId"),
   modalTitle: document.querySelector("#idiomModalTitle"),
   modalPronunciation: document.querySelector("#idiomModalPronunciation"),
   modalContent: document.querySelector("#idiomModalContent"),
@@ -55,6 +63,7 @@ async function init() {
 
     els.dataStatus.textContent = `已載入 ${state.idioms.length.toLocaleString("zh-TW")} 筆成語`;
     setDailyCard();
+    setQuickPicks();
     renderFavorites();
 
     const initialResult = state.query ? searchIdioms() : pickOpeningSet();
@@ -155,6 +164,18 @@ function bindEvents() {
   window.addEventListener("popstate", syncFromLocation);
 }
 
+function setQuickPicks() {
+  const keywordPicks = shuffle(QUICK_KEYWORDS).slice(0, Math.max(0, els.quickPicks.length - 1));
+  const idiomPick = randomMainIdiom();
+  const picks = [...keywordPicks, idiomPick?.成語].filter(Boolean).slice(0, els.quickPicks.length);
+
+  els.quickPicks.forEach((button, index) => {
+    const query = picks[index] || button.dataset.query || button.textContent.trim();
+    button.dataset.query = query;
+    button.textContent = query;
+  });
+}
+
 function prepareIdiom(item) {
   const searchable = [
     item.成語,
@@ -252,8 +273,13 @@ function createCard(item, index) {
     toggleFavorite(item);
   });
 
+  card.querySelector(".open-card-button").addEventListener("click", event => {
+    event.stopPropagation();
+    openIdiomModal(item);
+  });
+
   card.addEventListener("click", event => {
-    if (event.target.closest("button,details,summary,.favorite-button")) return;
+    if (event.target.closest("button,.favorite-button,.open-card-button")) return;
     openIdiomModal(item);
   });
 
@@ -269,30 +295,23 @@ function createCard(item, index) {
   });
 
   renderTags(card.querySelector(".tags"), item);
-  renderDetails(card.querySelector(".detail-body"), item);
   return card;
 }
 
 function renderTags(container, item) {
-  const tags = [
-    item["主條成語／非主條成語"],
-    item["用法說明-使用類別"],
-    item.近義成語 ? `近義：${compactText(item.近義成語)}` : "",
-    item.反義成語 ? `反義：${compactText(item.反義成語)}` : ""
-  ].filter(Boolean).slice(0, 4);
-
-  container.innerHTML = tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
+  container.innerHTML = "";
 }
 
 function renderDetails(container, item) {
   const blocks = [
-    block("語義說明", item["用法說明-語義說明"]),
+    usageContextBlock(item["用法說明-使用類別"]),
+    meaningBlock(item["用法說明-語義說明"]),
     block("典故說明", item.典故說明),
-    listBlock("用法例句", item["用法說明-例句"], 4),
+    listBlock("用法例句", item["用法說明-例句"], 4, item.成語),
     listBlock("書證", item.書證, 3),
-    block("典源", [item.典源文獻名稱, joinText(item.典源文獻內容)].filter(Boolean).join("：")),
-    block("辨識", [item["辨識-同"], item["辨識-異"], joinText(item["辨識-例句"])].filter(Boolean).join(" ")),
-    block("參考詞語", item.參考詞語)
+    sourceBlock(item),
+    identificationBlock(item),
+    idiomListBlock("參考詞語", item.參考詞語)
   ].filter(Boolean);
 
   container.innerHTML = blocks.join("") || `<p class="empty-state">此條目沒有更多補充內容。</p>`;
@@ -304,10 +323,135 @@ function block(title, value) {
   return `<section class="detail-block"><h4>${escapeHtml(title)}</h4><p>${renderLinkedText(text)}</p></section>`;
 }
 
-function listBlock(title, values, limit) {
-  const items = Array.isArray(values) ? values.map(cleanText).filter(Boolean).slice(0, limit) : [];
+function meaningBlock(value) {
+  const items = splitAmpersandList(value);
   if (!items.length) return "";
-  return `<section class="detail-block"><h4>${escapeHtml(title)}</h4><ul>${items.map(item => `<li>${renderLinkedText(item)}</li>`).join("")}</ul></section>`;
+
+  if (items.length === 1) {
+    return `<section class="detail-block meaning-block"><h4>語義說明</h4><p>${renderMeaningText(items[0])}</p></section>`;
+  }
+
+  const list = items.map((item, index) => `
+    <li class="meaning-item">
+      <span class="meaning-item__badge">${String(index + 1).padStart(2, "0")}</span>
+      <span class="meaning-item__text">${renderMeaningText(item)}</span>
+    </li>
+  `).join("");
+
+  return `<section class="detail-block meaning-block"><h4>語義說明</h4><ul class="meaning-list">${list}</ul></section>`;
+}
+
+function renderMeaningText(text) {
+  return renderLinkedText(text).replaceAll("貶義。", `<span class="negative-meaning">貶義</span>`);
+}
+
+function sourceBlock(item) {
+  const title = cleanSourceTitle(item.典源文獻名稱);
+  const paragraphs = sourceParagraphs(item.典源文獻內容);
+  if (!title && !paragraphs.length) return "";
+
+  const heading = title ? `<h5 class="source-title">${escapeHtml(title)}</h5>` : "";
+  const content = paragraphs.length
+    ? paragraphs.map(paragraph => `<p>${renderLinkedText(paragraph)}</p>`).join("")
+    : `<p class="empty-state">此條目未提供典源文獻內容。</p>`;
+
+  return `<section class="detail-block source-block"><h4>典源文獻</h4>${heading}<div class="source-content">${content}</div></section>`;
+}
+
+function usageContextBlock(value) {
+  const items = splitUsageContexts(value);
+  if (!items.length) return "";
+
+  if (items.length === 1) {
+    return `<section class="detail-block usage-context-block"><h4>使用情境</h4><p>${renderLinkedText(items[0])}</p></section>`;
+  }
+
+  const list = items.map((item, index) => `
+    <li class="usage-context-item">
+      <span class="usage-context-item__badge">${String(index + 1).padStart(2, "0")}</span>
+      <span class="usage-context-item__text">${renderLinkedText(item)}</span>
+    </li>
+  `).join("");
+
+  return `<section class="detail-block usage-context-block"><h4>使用情境</h4><ul class="usage-context-list">${list}</ul></section>`;
+}
+
+function identificationBlock(item) {
+  const sections = [
+    ["形音辨誤", item["辨識-形音辨誤"]],
+    ["相同辨析", item["辨識-同"]],
+    ["差異辨析", item["辨識-異"]]
+  ].map(([label, value]) => {
+    const text = cleanText(joinText(value));
+    if (!text) return "";
+
+    return `
+      <section class="identification-item">
+        <h5>${escapeHtml(label)}</h5>
+        <p>${renderLinkedText(text)}</p>
+      </section>
+    `;
+  }).filter(Boolean);
+
+  if (!sections.length) return "";
+  return `<section class="detail-block identification-block"><h4>辨識</h4><div class="identification-list">${sections.join("")}</div></section>`;
+}
+
+function listBlock(title, values, limit, highlightTerm = "") {
+  const isExamples = title === "用法例句";
+  const isEvidence = title === "書證";
+  const items = Array.isArray(values)
+    ? uniqueItems(
+        values.map(cleanText).filter(item => item && (!isExamples || hasMeaningfulText(item))),
+        isEvidence ? evidenceContentKey : item => item
+      ).slice(0, limit)
+    : [];
+  if (!items.length) return "";
+  const className = isExamples ? "detail-block example-block" : isEvidence ? "detail-block evidence-block" : "detail-block";
+  const listClass = isExamples ? " class=\"example-list\"" : isEvidence ? " class=\"evidence-list\"" : "";
+  const list = items.map((item, index) => {
+    if (isExamples) {
+      return `
+        <li class="example-item">
+          <span class="example-item__badge">例 ${index + 1}</span>
+          <span class="example-item__text">${renderLinkedText(item, highlightTerm)}</span>
+        </li>
+      `;
+    }
+
+    if (isEvidence) return renderEvidenceItem(item);
+
+    return `<li>${renderLinkedText(item)}</li>`;
+  }).join("");
+
+  return `<section class="${className}"><h4>${escapeHtml(title)}</h4><ul${listClass}>${list}</ul></section>`;
+}
+
+function renderEvidenceItem(item) {
+  const match = String(item || "").match(/^(\d\d\.)\s*(.*)$/);
+  if (!match) return `<li>${renderLinkedText(item)}</li>`;
+
+  return `
+    <li class="evidence-item">
+      <span class="evidence-item__badge">${escapeHtml(match[1].replace(".", ""))}</span>
+      <span class="evidence-item__text">${renderLinkedText(match[2])}</span>
+    </li>
+  `;
+}
+
+function idiomListBlock(title, value) {
+  const items = splitIdiomList(value);
+  if (!items.length) return "";
+
+  const list = items.map(name => {
+    const content = state.idiomByName.has(name)
+      ? `<button class="idiom-list-link" type="button" data-related-idiom="${escapeHtml(name)}">${escapeHtml(name)}</button>`
+      : `<span class="idiom-list-text">${escapeHtml(name)}</span>`;
+
+    return `<li>${content}</li>`;
+  }).join("");
+
+  return `<section class="detail-block idiom-list-block"><h4>${escapeHtml(title)}</h4><ul class="idiom-term-list">${list}</ul></section>`;
 }
 
 function toggleFavorite(item) {
@@ -417,34 +561,30 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
   if (!item) return;
 
   const id = String(item.編號 || item.成語);
+  const sourceId = String(item.編號 || "").trim();
   state.openId = id;
   els.modalKind.textContent = item["主條成語／非主條成語"] || "成語條目";
+  els.modalId.innerHTML = sourceId
+    ? `編號 <a href="https://dict.idioms.moe.edu.tw/idiomView.jsp?ID=${encodeURIComponent(sourceId)}" target="_blank" rel="noopener">${escapeHtml(sourceId)}</a>`
+    : "編號 未載明";
   els.modalTitle.textContent = item.成語 || "未命名成語";
   setupPronunciationToggle(els.modalPronunciation, item);
 
   const details = [
-    block("語義說明", item["用法說明-語義說明"]),
+    usageContextBlock(item["用法說明-使用類別"]),
+    meaningBlock(item["用法說明-語義說明"]),
     block("典故說明", item.典故說明),
-    listBlock("用法例句", item["用法說明-例句"], 8),
+    listBlock("用法例句", item["用法說明-例句"], 8, item.成語),
     listBlock("書證", item.書證, 10),
-    block("典源", [item.典源文獻名稱, joinText(item.典源文獻內容)].filter(Boolean).join("：")),
-    block("辨識", [item["辨識-同"], item["辨識-異"], joinText(item["辨識-例句"])].filter(Boolean).join(" ")),
-    block("近義", item.近義成語),
-    block("反義", item.反義成語),
-    block("參考詞語", item.參考詞語)
+    sourceBlock(item),
+    identificationBlock(item),
+    idiomListBlock("近義", item.近義成語),
+    idiomListBlock("反義", item.反義成語),
+    idiomListBlock("參考詞語", item.參考詞語)
   ].filter(Boolean);
 
-  const tags = [
-    item["主條成語／非主條成語"],
-    item["用法說明-使用類別"],
-    item.近義成語 ? `近義：${compactText(item.近義成語)}` : "",
-    item.反義成語 ? `反義：${compactText(item.反義成語)}` : ""
-  ].filter(Boolean).slice(0, 4).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
-
   els.modalContent.innerHTML = `
-    <p class="modal__id">編號 ${item.編號 || "未載明"}</p>
-    <p class="modal__meaning">${renderLinkedText(firstMeaning(item.釋義) || "此條目未提供釋義。")}</p>
-    <div class="modal__tags">${tags}</div>
+    <div class="modal__meaning">${renderMeaningParagraphs(item.釋義)}</div>
     <div class="modal__actions">
       <button class="button button--primary" id="favoriteInModal" type="button">${state.favorites.has(id) ? "已收藏" : "收藏"}</button>
       <button class="button button--secondary" id="shareInModal" type="button">複製分享連結</button>
@@ -557,16 +697,86 @@ function cleanText(value) {
     .trim();
 }
 
+function cleanSourceTitle(value) {
+  return String(value || "")
+    .replace(/^＃+/, "")
+    .replace(/^#+/, "")
+    .replace(/\*\d+\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sourceParagraphs(value) {
+  const text = (Array.isArray(value) ? value.join("") : String(value || ""))
+    .split(/[#◎]/)
+    .map(paragraph => paragraph.replace(/\*\d+\*/g, "").replace(/\s+/g, "").trim())
+    .filter(Boolean);
+
+  return text;
+}
+
 function firstMeaning(value) {
-  const list = Array.isArray(value) ? value : [value];
-  return cleanText(list.find(Boolean) || "");
+  return meaningParagraphs(value)[0] || "";
+}
+
+function meaningParagraphs(value) {
+  const text = Array.isArray(value)
+    ? value.filter(item => !String(item || "").trim().startsWith("△")).join(" ")
+    : String(value || "");
+
+  return text
+    .split(/[＃◎※]/)
+    .map(cleanText)
+    .filter(Boolean);
+}
+
+function renderMeaningParagraphs(value) {
+  const paragraphs = meaningParagraphs(value);
+  if (!paragraphs.length) return `<p>此條目未提供釋義。</p>`;
+  return paragraphs.map(paragraph => `<p>${renderLinkedText(paragraph)}</p>`).join("");
 }
 
 function compactText(value) {
   return cleanText(value).slice(0, 28);
 }
 
-function renderLinkedText(text) {
+function splitIdiomList(value) {
+  return cleanText(joinText(value))
+    .split("、")
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function splitUsageContexts(value) {
+  return splitAmpersandList(value);
+}
+
+function splitAmpersandList(value) {
+  return uniqueItems(cleanText(joinText(value))
+    .split("＆")
+    .map(item => item.trim())
+    .filter(Boolean));
+}
+
+function hasMeaningfulText(value) {
+  return /[\p{Script=Han}\p{Script=Bopomofo}\p{Letter}\p{Number}]/u.test(String(value || ""));
+}
+
+function uniqueItems(items, keyFn = item => item) {
+  const seen = new Set();
+  return items.filter(item => {
+    const key = cleanText(keyFn(item));
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function evidenceContentKey(value) {
+  return cleanText(value).replace(/^\d\d\.\s*/, "");
+}
+
+function renderLinkedText(text, highlightTerm = "") {
   const value = String(text || "");
   const pattern = /「([^」]{2,12})」/g;
   let html = "";
@@ -575,18 +785,39 @@ function renderLinkedText(text) {
 
   while ((match = pattern.exec(value))) {
     const [quoted, name] = match;
-    html += escapeHtml(value.slice(lastIndex, match.index));
+    html += renderHighlightedPlainText(value.slice(lastIndex, match.index), highlightTerm);
 
     if (state.idiomByName.has(name)) {
-      html += `「<button class="related-idiom-link" type="button" data-related-idiom="${escapeHtml(name)}">${escapeHtml(name)}</button>」`;
+      const highlightClass = name === highlightTerm ? " is-highlighted" : "";
+      html += `「<button class="related-idiom-link${highlightClass}" type="button" data-related-idiom="${escapeHtml(name)}">${escapeHtml(name)}</button>」`;
     } else {
-      html += escapeHtml(quoted);
+      html += renderHighlightedPlainText(quoted, highlightTerm);
     }
 
     lastIndex = match.index + quoted.length;
   }
 
-  html += escapeHtml(value.slice(lastIndex));
+  html += renderHighlightedPlainText(value.slice(lastIndex), highlightTerm);
+  return html;
+}
+
+function renderHighlightedPlainText(text, highlightTerm = "") {
+  const value = String(text || "");
+  const term = String(highlightTerm || "").trim();
+  if (!term) return escapeHtml(value);
+
+  let html = "";
+  let start = 0;
+  let index = value.indexOf(term);
+
+  while (index !== -1) {
+    html += escapeHtml(value.slice(start, index));
+    html += `<mark class="example-highlight">${escapeHtml(term)}</mark>`;
+    start = index + term.length;
+    index = value.indexOf(term, start);
+  }
+
+  html += escapeHtml(value.slice(start));
   return html;
 }
 
@@ -610,11 +841,43 @@ function renderZhuyinSyllables(value) {
 }
 
 function renderPronunciationSyllables(value) {
-  return cleanText(value)
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(syllable => `<span class="pronunciation__syllable">${escapeHtml(syllable)}</span>`)
-    .join("");
+  const groups = splitPronunciationGroups(value);
+  const hasVariants = groups.length > 1 || groups.some(group => group.label);
+
+  return groups.map((group, index) => {
+    const syllables = group.syllables
+      .map(syllable => `<span class="pronunciation__syllable">${escapeHtml(syllable)}</span>`)
+      .join("");
+    const labelText = pronunciationGroupLabel(group.label, index, hasVariants);
+    const label = labelText ? `<span class="pronunciation__variant-label">${escapeHtml(labelText)}</span>` : "";
+
+    return `<span class="pronunciation__group">${label}${syllables}</span>`;
+  }).join("");
+}
+
+function pronunciationGroupLabel(label, index, hasVariants) {
+  if (label.includes("變")) return "變讀";
+  if (hasVariants && index === 0) return "本音";
+  return label.replace(/[（）]/g, "");
+}
+
+function splitPronunciationGroups(value) {
+  const tokens = cleanText(value).split(/\s+/).filter(Boolean);
+  const groups = [];
+  let current = { label: "", syllables: [] };
+
+  tokens.forEach(token => {
+    if (/^（[^）]+）$/.test(token)) {
+      if (current.syllables.length) groups.push(current);
+      current = { label: token, syllables: [] };
+      return;
+    }
+
+    current.syllables.push(token);
+  });
+
+  if (current.syllables.length || current.label) groups.push(current);
+  return groups;
 }
 
 function currentPronunciationMode(button) {
