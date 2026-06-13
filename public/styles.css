@@ -311,7 +311,8 @@ h1 {
 .link-button:focus-visible,
 input:focus-visible,
 .mini-list button:focus-visible,
-.pronunciation:focus-visible {
+.pronunciation:focus-visible,
+#favorites-title:focus-visible {
   outline: 3px solid rgba(169, 54, 40, 0.28);
   outline-offset: 3px;
 }
@@ -515,10 +516,52 @@ input:focus-visible,
   color: var(--seal-dark);
 }
 
+.link-button--danger {
+  color: var(--seal-dark);
+}
+
+#favorites-title {
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.08rem 0.18rem;
+  margin: -0.08rem -0.18rem;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+  transition: background 160ms var(--ease-ui), box-shadow 160ms var(--ease-ui);
+}
+
+#favorites-title.is-editing {
+  background: rgba(255, 250, 239, 0.72);
+  box-shadow: 0 0 0 1px rgba(169, 54, 40, 0.22) inset;
+}
+
+.favorites-toolbar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.favorites-toolbar .link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding-inline: 0.52rem;
+}
+
+.favorites-status {
+  min-height: 1.35rem;
+  margin: 0.58rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
 .mini-list {
   display: grid;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .mini-list button {
@@ -526,6 +569,59 @@ input:focus-visible,
   padding: 0.72rem 0.82rem;
   text-align: left;
   border-radius: 15px;
+}
+
+.favorite-list-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.28rem;
+  gap: 6px;
+  align-items: center;
+}
+
+.favorite-item-button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-list .favorite-remove-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.28rem;
+  height: 2.28rem;
+  min-height: 2.28rem;
+  padding: 0;
+  color: var(--seal-dark);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(4px);
+  transition: opacity 160ms var(--ease-ui), transform 160ms var(--ease-ui), background 160ms var(--ease-ui), color 160ms var(--ease-ui);
+}
+
+.favorite-list-item:hover .favorite-remove-button,
+.favorite-list-item:focus-within .favorite-remove-button {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.mini-list .favorite-remove-button:hover {
+  color: #fffaf0;
+  background:
+    linear-gradient(135deg, var(--seal), var(--seal-dark)) padding-box,
+    linear-gradient(135deg, rgba(255,255,255,0.32), rgba(216,138,41,0.24), rgba(255,255,255,0.08)) border-box;
+  transform: translateX(0) translateY(-2px);
+}
+
+@media (hover: none) {
+  .mini-list .favorite-remove-button {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
 }
 
 .empty-state {

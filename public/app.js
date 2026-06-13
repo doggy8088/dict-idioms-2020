@@ -1,6 +1,8 @@
 const DATA_URL = "dict_idioms_2020_20260324.min.json";
 const MAX_RESULTS = 24;
 const FAVORITES_KEY = "dict-idioms-favorites";
+const DEFAULT_FAVORITES_TITLE = "我的收藏";
+const FAVORITES_EXPORT_SCHEMA = "dict-idioms-favorites@1";
 const PRONUNCIATION_MODE_KEY = "dict-idioms-pronunciation-mode";
 const DEFAULT_OPEN_COUNT = 6;
 const QUICK_KEYWORDS = [
@@ -10,6 +12,7 @@ const QUICK_KEYWORDS = [
   "言語", "行動", "速度", "時間", "才能", "方法",
   "家庭", "朋友", "敵人", "戰爭", "快樂", "悲傷"
 ];
+const favoriteSettings = readFavoritesSettings();
 
 const state = {
   idioms: [],
@@ -19,7 +22,8 @@ const state = {
   openId: "",
   pronunciationMode: readPronunciationMode(),
   dailyItem: null,
-  favorites: new Set(readFavorites())
+  favoritesTitle: favoriteSettings.title,
+  favorites: new Set(favoriteSettings.favorites)
 };
 
 const els = {
@@ -35,7 +39,12 @@ const els = {
   resultCount: document.querySelector("#resultCount"),
   template: document.querySelector("#idiomTemplate"),
   randomTop: document.querySelector("#randomTop"),
+  favoritesTitle: document.querySelector("#favorites-title"),
   favoritesList: document.querySelector("#favoritesList"),
+  favoritesStatus: document.querySelector("#favoritesStatus"),
+  importFavorites: document.querySelector("#importFavorites"),
+  exportFavorites: document.querySelector("#exportFavorites"),
+  importFavoritesFile: document.querySelector("#importFavoritesFile"),
   clearFavorites: document.querySelector("#clearFavorites"),
   modal: document.querySelector("#idiomModal"),
   modalKind: document.querySelector("#idiomModalKind"),
@@ -46,10 +55,14 @@ const els = {
   modalClose: document.querySelector("#idiomModalClose")
 };
 
+let favoriteTitleBeforeEdit = state.favoritesTitle;
+let favoriteStatusTimer = 0;
+
 init();
 
 async function init() {
   applySearchFromUrl();
+  syncFavoritesTitle();
   bindEvents();
   await registerServiceWorker();
 
@@ -138,11 +151,54 @@ function bindEvents() {
     }
   });
 
+  els.favoritesTitle.addEventListener("dblclick", startFavoriteTitleEdit);
+  els.favoritesTitle.addEventListener("keydown", event => {
+    if (isEditingFavoriteTitle()) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        commitFavoriteTitleEdit();
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        cancelFavoriteTitleEdit();
+      }
+
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === "F2") {
+      event.preventDefault();
+      startFavoriteTitleEdit();
+    }
+  });
+  els.favoritesTitle.addEventListener("blur", () => {
+    if (isEditingFavoriteTitle()) commitFavoriteTitleEdit();
+  });
+
+  els.importFavorites.addEventListener("click", () => {
+    els.importFavoritesFile.click();
+  });
+
+  els.importFavoritesFile.addEventListener("change", async () => {
+    const [file] = els.importFavoritesFile.files || [];
+    if (!file) return;
+
+    try {
+      await importFavoritesFromFile(file);
+    } finally {
+      els.importFavoritesFile.value = "";
+    }
+  });
+
+  els.exportFavorites.addEventListener("click", exportFavorites);
+
   els.clearFavorites.addEventListener("click", () => {
     state.favorites.clear();
     saveFavorites();
     renderFavorites();
     renderResults(searchIdioms());
+    setFavoritesStatus("已清空收藏");
   });
 
   els.modalClose.addEventListener("click", closeIdiomModal);
@@ -626,17 +682,225 @@ function renderFavorites() {
     return;
   }
 
-  els.favoritesList.innerHTML = saved.map(item => `<button type="button" data-id="${escapeHtml(String(item.編號 || item.成語))}">${escapeHtml(item.成語)}</button>`).join("");
-  els.favoritesList.querySelectorAll("button").forEach(button => {
+  els.favoritesList.innerHTML = saved.map(item => {
+    const id = escapeHtml(String(item.編號 || item.成語));
+    const name = escapeHtml(item.成語);
+
+    return `
+      <div class="favorite-list-item">
+        <button class="favorite-item-button" type="button" data-action="open" data-id="${id}">${name}</button>
+        <button class="favorite-remove-button" type="button" data-action="remove" data-id="${id}" aria-label="刪除收藏：${name}">x</button>
+      </div>
+    `;
+  }).join("");
+
+  els.favoritesList.querySelectorAll("[data-action]").forEach(button => {
     button.addEventListener("click", () => {
       const item = saved.find(entry => String(entry.編號 || entry.成語) === button.dataset.id);
       if (!item) return;
+
+      if (button.dataset.action === "remove") {
+        state.favorites.delete(String(item.編號 || item.成語));
+        saveFavorites();
+        renderFavorites();
+        renderResults(searchIdioms());
+        setFavoritesStatus(`已刪除「${item.成語}」`);
+        return;
+      }
+
       els.input.value = item.成語;
       state.query = normalize(item.成語);
       renderResults([item]);
       updateLocationFromState(item.編號 || item.成語, true);
     });
   });
+}
+
+function syncFavoritesTitle() {
+  state.favoritesTitle = normalizeFavoriteTitle(state.favoritesTitle);
+  els.favoritesTitle.textContent = state.favoritesTitle;
+  els.favoritesTitle.title = "雙擊可修改標題";
+}
+
+function isEditingFavoriteTitle() {
+  return els.favoritesTitle.getAttribute("contenteditable") === "true";
+}
+
+function startFavoriteTitleEdit() {
+  if (isEditingFavoriteTitle()) return;
+
+  favoriteTitleBeforeEdit = state.favoritesTitle;
+  els.favoritesTitle.setAttribute("contenteditable", "true");
+  els.favoritesTitle.classList.add("is-editing");
+  els.favoritesTitle.focus();
+  selectElementText(els.favoritesTitle);
+}
+
+function commitFavoriteTitleEdit() {
+  const nextTitle = normalizeFavoriteTitle(els.favoritesTitle.textContent);
+  const changed = nextTitle !== state.favoritesTitle;
+
+  state.favoritesTitle = nextTitle;
+  endFavoriteTitleEdit();
+  syncFavoritesTitle();
+  saveFavorites();
+
+  if (changed) setFavoritesStatus("已更新收藏標題");
+}
+
+function cancelFavoriteTitleEdit() {
+  state.favoritesTitle = favoriteTitleBeforeEdit;
+  endFavoriteTitleEdit();
+  syncFavoritesTitle();
+}
+
+function endFavoriteTitleEdit() {
+  els.favoritesTitle.removeAttribute("contenteditable");
+  els.favoritesTitle.classList.remove("is-editing");
+  window.getSelection()?.removeAllRanges();
+}
+
+function selectElementText(element) {
+  const range = document.createRange();
+  range.selectNodeContents(element);
+
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function exportFavorites() {
+  const payload = buildFavoritesExportPayload();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `${safeFileName(state.favoritesTitle)}-${formatDateForFile(new Date())}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  setFavoritesStatus(`已匯出 ${payload.favorites.length} 筆收藏`);
+}
+
+function buildFavoritesExportPayload() {
+  return {
+    schema: FAVORITES_EXPORT_SCHEMA,
+    title: state.favoritesTitle,
+    exportedAt: new Date().toISOString(),
+    favorites: [...state.favorites].map(key => {
+      const item = findIdiomByIdentifier(key);
+
+      return {
+        id: item ? String(item.編號 || item.成語) : key,
+        idiom: item?.成語 || "",
+        zhuyin: item?.注音 || "",
+        pinyin: item?.漢語拼音 || ""
+      };
+    })
+  };
+}
+
+async function importFavoritesFromFile(file) {
+  try {
+    const payload = JSON.parse(await file.text());
+    const imported = parseFavoritesImport(payload);
+
+    if (imported.title !== null) state.favoritesTitle = imported.title;
+    state.favorites = new Set(imported.favorites);
+    saveFavorites();
+    syncFavoritesTitle();
+    renderFavorites();
+    renderResults(searchIdioms());
+
+    const ignored = imported.ignoredCount ? `，略過 ${imported.ignoredCount} 筆無法辨識資料` : "";
+    setFavoritesStatus(`已匯入 ${imported.favorites.length} 筆收藏${ignored}`);
+  } catch (error) {
+    console.error(error);
+    setFavoritesStatus("匯入失敗");
+    window.alert(error?.message || "匯入失敗，請確認 JSON 檔案格式。");
+  }
+}
+
+function parseFavoritesImport(payload) {
+  if (Array.isArray(payload)) return normalizeImportedFavorites(payload, null);
+
+  if (!payload || typeof payload !== "object") {
+    throw new Error("匯入檔必須是 JSON 物件或收藏陣列。");
+  }
+
+  const favorites = Array.isArray(payload.favorites)
+    ? payload.favorites
+    : Array.isArray(payload.items)
+      ? payload.items
+      : null;
+
+  if (!favorites) throw new Error("匯入檔缺少 favorites 陣列。");
+
+  const title = Object.prototype.hasOwnProperty.call(payload, "title")
+    ? normalizeFavoriteTitle(payload.title)
+    : null;
+
+  return normalizeImportedFavorites(favorites, title);
+}
+
+function normalizeImportedFavorites(items, title) {
+  const favorites = new Set();
+  let ignoredCount = 0;
+
+  items.forEach(item => {
+    const key = resolveFavoriteImportKey(item);
+    if (!key) {
+      ignoredCount += 1;
+      return;
+    }
+
+    favorites.add(key);
+  });
+
+  if (items.length > 0 && !favorites.size) {
+    throw new Error("匯入檔沒有可辨識的收藏項目。");
+  }
+
+  return {
+    title,
+    favorites: [...favorites],
+    ignoredCount
+  };
+}
+
+function resolveFavoriteImportKey(value) {
+  let identifier = "";
+  let idiom = "";
+
+  if (typeof value === "string" || typeof value === "number") {
+    identifier = String(value).trim();
+  } else if (value && typeof value === "object") {
+    identifier = firstNonEmpty(value.id, value.key, value.編號, value.favoriteId);
+    idiom = firstNonEmpty(value.idiom, value.成語, value.name);
+  }
+
+  if (!state.idioms.length) return identifier || idiom;
+
+  const item = findIdiomByIdentifier(identifier) || findIdiomByIdentifier(idiom);
+  return item ? String(item.編號 || item.成語) : "";
+}
+
+function firstNonEmpty(...values) {
+  const value = values.find(item => String(item || "").trim());
+  return value === undefined ? "" : String(value).trim();
+}
+
+function setFavoritesStatus(message) {
+  window.clearTimeout(favoriteStatusTimer);
+  els.favoritesStatus.textContent = message;
+
+  if (message) {
+    favoriteStatusTimer = window.setTimeout(() => {
+      els.favoritesStatus.textContent = "";
+    }, 3200);
+  }
 }
 
 function setDailyCard() {
@@ -1092,16 +1356,83 @@ function shuffle(items) {
   return list;
 }
 
-function readFavorites() {
+function readFavoritesSettings() {
+  const fallback = {
+    title: DEFAULT_FAVORITES_TITLE,
+    favorites: []
+  };
+
   try {
-    return JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    if (!raw) return fallback;
+
+    const payload = JSON.parse(raw);
+    if (Array.isArray(payload)) {
+      return {
+        title: DEFAULT_FAVORITES_TITLE,
+        favorites: normalizeStoredFavoriteKeys(payload)
+      };
+    }
+
+    if (payload && typeof payload === "object") {
+      return {
+        title: normalizeFavoriteTitle(payload.title),
+        favorites: normalizeStoredFavoriteKeys(payload.favorites || payload.items || [])
+      };
+    }
+
+    return fallback;
   } catch {
-    return [];
+    return fallback;
   }
 }
 
 function saveFavorites() {
-  localStorage.setItem(FAVORITES_KEY, JSON.stringify([...state.favorites]));
+  try {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify({
+      title: state.favoritesTitle,
+      favorites: [...state.favorites]
+    }));
+  } catch {}
+}
+
+function normalizeFavoriteTitle(value) {
+  const title = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return title ? title.slice(0, 32) : DEFAULT_FAVORITES_TITLE;
+}
+
+function normalizeStoredFavoriteKeys(items) {
+  if (!Array.isArray(items)) return [];
+
+  return [...new Set(items.map(extractStoredFavoriteKey).filter(Boolean))];
+}
+
+function extractStoredFavoriteKey(item) {
+  if (typeof item === "string" || typeof item === "number") return String(item).trim();
+
+  if (item && typeof item === "object") {
+    return firstNonEmpty(item.id, item.key, item.編號, item.idiom, item.成語);
+  }
+
+  return "";
+}
+
+function safeFileName(value) {
+  return normalizeFavoriteTitle(value)
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .replace(/\s+/g, "-")
+    .slice(0, 48) || "favorites";
+}
+
+function formatDateForFile(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}${month}${day}`;
 }
 
 function readPronunciationMode() {
