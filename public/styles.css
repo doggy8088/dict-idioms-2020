@@ -41,7 +41,7 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
-  font-family: "Chocolate Classical Sans", "Noto Sans TC", sans-serif;
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
   background:
     radial-gradient(circle at 11% 7%, rgba(216, 138, 41, 0.28), transparent 24rem),
     radial-gradient(circle at 91% 18%, rgba(169, 54, 40, 0.13), transparent 25rem),
@@ -199,7 +199,7 @@ button {
   color: rgba(110, 33, 25, 0.065);
   font-family: "Noto Serif TC", serif;
   font-size: clamp(9rem, 24vw, 19rem);
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.16em;
   pointer-events: none;
 }
@@ -279,7 +279,7 @@ h1 {
   border: 1px solid transparent;
   border-radius: 999px;
   text-decoration: none;
-  font-weight: 800;
+  font-weight: 500;
   box-shadow: var(--shadow-sm);
   transition: transform 160ms var(--ease-ui), box-shadow 160ms var(--ease-ui), background 160ms var(--ease-ui);
 }
@@ -357,7 +357,7 @@ input:focus-visible,
   background: var(--moss);
   border-radius: 999px;
   font-size: 0.8rem;
-  font-weight: 800;
+  font-weight: 500;
   box-shadow: var(--shadow-sm);
 }
 
@@ -417,7 +417,7 @@ input:focus-visible,
 .result-count {
   margin: 0;
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .search-box {
@@ -583,7 +583,7 @@ input:focus-visible,
   margin: 0 0 0.55rem;
   color: var(--muted);
   font-size: 0.8rem;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .idiom-card h3 {
@@ -629,7 +629,7 @@ input:focus-visible,
   color: var(--seal-dark);
   background: rgba(169, 54, 40, 0.07);
   font-size: 0.78em;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.2;
 }
 
@@ -645,7 +645,7 @@ input:focus-visible,
   background:
     linear-gradient(rgba(255, 250, 239, 0.78), rgba(255, 250, 239, 0.78)) padding-box,
     linear-gradient(135deg, rgba(49, 93, 115, 0.28), rgba(255, 255, 255, 0.45)) border-box;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.38;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.62) inset;
 }
@@ -705,7 +705,7 @@ input:focus-visible,
   border: 1px solid rgba(169, 54, 40, 0.18);
   border-radius: 999px;
   background: rgba(169, 54, 40, 0.06);
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .open-card-button:hover {
@@ -750,7 +750,7 @@ input:focus-visible,
   background: transparent;
   font-family: "Noto Serif TC", serif;
   font-size: 1.06rem;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.02em;
 }
 
@@ -794,7 +794,7 @@ input:focus-visible,
   border-radius: 0.38em;
   color: var(--seal-dark);
   background: rgba(169, 54, 40, 0.08);
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .source-title {
@@ -807,7 +807,7 @@ input:focus-visible,
   color: var(--lake);
   background: rgba(49, 93, 115, 0.08);
   font-size: 0.92rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.5;
 }
 
@@ -880,7 +880,7 @@ input:focus-visible,
   color: #fffaf0;
   background: linear-gradient(135deg, var(--sun), var(--seal));
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 500;
   box-shadow: 0 4px 12px rgba(169, 54, 40, 0.18);
 }
 
@@ -925,7 +925,7 @@ input:focus-visible,
   color: var(--moss);
   background: rgba(60, 116, 89, 0.12);
   font-size: 0.74rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1;
 }
 
@@ -970,7 +970,7 @@ input:focus-visible,
   color: var(--lake);
   background: rgba(49, 93, 115, 0.1);
   font-size: 0.74rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1;
 }
 
@@ -1001,7 +1001,7 @@ input:focus-visible,
   color: var(--lake);
   background: rgba(49, 93, 115, 0.09);
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.08em;
 }
 
@@ -1058,7 +1058,7 @@ input:focus-visible,
   background:
     linear-gradient(135deg, rgba(255, 250, 239, 0.95), rgba(238, 244, 232, 0.86)) padding-box,
     linear-gradient(135deg, rgba(60, 116, 89, 0.32), rgba(216, 138, 41, 0.26)) border-box;
-  font-weight: 900;
+  font-weight: 500;
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
@@ -1097,12 +1097,12 @@ input:focus-visible,
 
 .quiz-feedback.is-correct {
   color: #1f6f50;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .quiz-feedback.is-wrong {
   color: #9b3526;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .quiz-celebration {
@@ -1212,7 +1212,7 @@ input:focus-visible,
   color: #fffaf0;
   background: linear-gradient(135deg, var(--moss), var(--lake));
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1;
   box-shadow: 0 4px 12px rgba(49, 93, 115, 0.16);
 }
@@ -1267,7 +1267,7 @@ input:focus-visible,
   background:
     linear-gradient(135deg, rgba(255, 250, 239, 0.88), rgba(255, 246, 232, 0.66)) padding-box,
     linear-gradient(135deg, rgba(60, 116, 89, 0.16), rgba(216, 138, 41, 0.14)) border-box;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.45;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.68) inset;
 }
@@ -1297,7 +1297,7 @@ input:focus-visible,
   border-style: dashed;
   color: rgba(117, 106, 96, 0.78);
   background: rgba(255, 250, 239, 0.36);
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .related-idiom-link {
@@ -1307,7 +1307,7 @@ input:focus-visible,
   border: 0;
   color: var(--seal-dark);
   background: transparent;
-  font-weight: 900;
+  font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 0.18em;
   cursor: pointer;
@@ -1346,7 +1346,7 @@ input:focus-visible,
 
 .site-footer a {
   color: var(--seal-dark);
-  font-weight: 900;
+  font-weight: 500;
   text-underline-offset: 0.2em;
 }
 
@@ -1562,7 +1562,7 @@ input:focus-visible,
   padding-right: 4.6rem;
   color: var(--muted);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.08em;
 }
 
