@@ -694,6 +694,29 @@ summary {
   margin: 0;
 }
 
+.related-idiom-link {
+  display: inline;
+  margin: 0;
+  padding: 0 0.08em;
+  border: 0;
+  color: var(--seal-dark);
+  background: transparent;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.related-idiom-link:hover {
+  color: var(--seal);
+}
+
+.related-idiom-link:focus-visible {
+  outline: 3px solid rgba(169, 54, 40, 0.28);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .detail-block ul,
 .detail-block ol {
   padding-left: 1.15rem;

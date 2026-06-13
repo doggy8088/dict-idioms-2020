@@ -5,6 +5,7 @@ const DEFAULT_OPEN_COUNT = 6;
 
 const state = {
   idioms: [],
+  idiomByName: new Map(),
   query: "",
   filter: "all",
   openId: "",
@@ -48,6 +49,7 @@ async function init() {
 
     state.idioms = Array.isArray(payload) ? payload : payload.idioms || [];
     state.idioms = state.idioms.map(prepareIdiom);
+    state.idiomByName = new Map(state.idioms.map(item => [String(item.成語 || "").trim(), item]).filter(([name]) => name));
 
     els.dataStatus.textContent = `已載入 ${state.idioms.length.toLocaleString("zh-TW")} 筆成語`;
     setDailyCard();
@@ -139,6 +141,14 @@ function bindEvents() {
       closeIdiomModal();
     }
   });
+
+  document.addEventListener("click", event => {
+    const link = event.target.closest("[data-related-idiom]");
+    if (!link) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openRelatedIdiom(link.dataset.relatedIdiom);
+  });
 }
 
 function prepareIdiom(item) {
@@ -227,7 +237,7 @@ function createCard(item, index) {
   card.querySelector(".idiom-card__number").textContent = `編號 ${item.編號 || "未載明"}`;
   card.querySelector("h3").textContent = item.成語 || "未命名成語";
   setupPronunciationToggle(card.querySelector(".pronunciation"), item);
-  card.querySelector(".meaning").textContent = firstMeaning(item.釋義) || "此條目未提供釋義。";
+  card.querySelector(".meaning").innerHTML = renderLinkedText(firstMeaning(item.釋義) || "此條目未提供釋義。");
 
   const favoriteButton = card.querySelector(".favorite-button");
   const key = String(item.編號 || item.成語);
@@ -292,13 +302,13 @@ function renderDetails(container, item) {
 function block(title, value) {
   const text = cleanText(joinText(value));
   if (!text) return "";
-  return `<section class="detail-block"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(text)}</p></section>`;
+  return `<section class="detail-block"><h4>${escapeHtml(title)}</h4><p>${renderLinkedText(text)}</p></section>`;
 }
 
 function listBlock(title, values, limit) {
   const items = Array.isArray(values) ? values.map(cleanText).filter(Boolean).slice(0, limit) : [];
   if (!items.length) return "";
-  return `<section class="detail-block"><h4>${escapeHtml(title)}</h4><ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>`;
+  return `<section class="detail-block"><h4>${escapeHtml(title)}</h4><ul>${items.map(item => `<li>${renderLinkedText(item)}</li>`).join("")}</ul></section>`;
 }
 
 function toggleFavorite(item) {
@@ -390,6 +400,16 @@ function findIdiomByIdentifier(identifier) {
   );
 }
 
+function openRelatedIdiom(name) {
+  const item = findIdiomByIdentifier(name);
+  if (!item) return;
+
+  els.input.value = item.成語;
+  state.query = normalize(item.成語);
+  renderResults([item]);
+  openIdiomModal(item);
+}
+
 function openIdiomModal(item, andUpdateUrl = true) {
   if (!item) return;
 
@@ -420,7 +440,7 @@ function openIdiomModal(item, andUpdateUrl = true) {
 
   els.modalContent.innerHTML = `
     <p class="modal__id">編號 ${item.編號 || "未載明"}</p>
-    <p class="modal__meaning">${escapeHtml(firstMeaning(item.釋義) || "此條目未提供釋義。")}</p>
+    <p class="modal__meaning">${renderLinkedText(firstMeaning(item.釋義) || "此條目未提供釋義。")}</p>
     <div class="modal__tags">${tags}</div>
     <div class="modal__actions">
       <button class="button button--primary" id="favoriteInModal" type="button">${state.favorites.has(id) ? "已收藏" : "收藏"}</button>
@@ -506,6 +526,30 @@ function firstMeaning(value) {
 
 function compactText(value) {
   return cleanText(value).slice(0, 28);
+}
+
+function renderLinkedText(text) {
+  const value = String(text || "");
+  const pattern = /「([^」]{2,12})」/g;
+  let html = "";
+  let lastIndex = 0;
+  let match;
+
+  while ((match = pattern.exec(value))) {
+    const [quoted, name] = match;
+    html += escapeHtml(value.slice(lastIndex, match.index));
+
+    if (state.idiomByName.has(name)) {
+      html += `<button class="related-idiom-link" type="button" data-related-idiom="${escapeHtml(name)}">${escapeHtml(quoted)}</button>`;
+    } else {
+      html += escapeHtml(quoted);
+    }
+
+    lastIndex = match.index + quoted.length;
+  }
+
+  html += escapeHtml(value.slice(lastIndex));
+  return html;
 }
 
 function setupPronunciationToggle(button, item) {
