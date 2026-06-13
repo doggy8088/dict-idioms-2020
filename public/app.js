@@ -703,6 +703,11 @@ function findIdiomByIdentifier(identifier) {
   );
 }
 
+function buildIdiomShareUrl(phrase) {
+  const idiom = String(phrase || "").trim();
+  return `https://stroke.gh.miniasp.com/?sentence=${encodeURIComponent(idiom)}`;
+}
+
 function openRelatedIdiom(name) {
   const item = findIdiomByIdentifier(name);
   if (!item) return;
@@ -744,13 +749,16 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
     <div class="modal__meaning">${renderMeaningParagraphs(item.釋義)}</div>
     <div class="modal__actions">
       <button class="button button--primary" id="favoriteInModal" type="button">${state.favorites.has(id) ? "已收藏" : "收藏"}</button>
-      <button class="button button--secondary" id="shareInModal" type="button">複製分享連結</button>
+      <button class="button button--secondary" id="writeWordInModal" type="button">去寫字</button>
+      <button class="button button--secondary" id="shareInModal" type="button">分享</button>
     </div>
     <div class="modal__detail">${details.join("")}</div>
   `;
 
   const favoriteInModal = els.modalContent.querySelector("#favoriteInModal");
+  const writeWordInModal = els.modalContent.querySelector("#writeWordInModal");
   const shareInModal = els.modalContent.querySelector("#shareInModal");
+  const shareUrl = buildIdiomShareUrl(item.成語);
 
   if (favoriteInModal) {
     favoriteInModal.addEventListener("click", () => {
@@ -759,15 +767,22 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
     });
   }
 
+  if (writeWordInModal) {
+    writeWordInModal.title = `前往「${item.成語 || "未命名成語"}」寫字頁面`;
+    writeWordInModal.addEventListener("click", () => {
+      window.open(shareUrl, "_blank", "noopener,noreferrer");
+    });
+  }
+
   if (shareInModal) {
     shareInModal.setAttribute("aria-live", "polite");
     shareInModal.addEventListener("click", async () => {
-      const originalText = "複製分享連結";
+      const originalText = "分享";
       shareInModal.disabled = true;
 
       try {
-        await navigator.clipboard?.writeText(window.location.href);
-        shareInModal.textContent = "已複製";
+        await navigator.clipboard?.writeText(shareUrl);
+        shareInModal.textContent = "已複製連結";
       } catch {
         shareInModal.textContent = "複製失敗";
       }
