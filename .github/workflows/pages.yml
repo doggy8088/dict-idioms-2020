@@ -28,17 +28,10 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Prepare static site
-        run: |
-          mkdir -p _site
-          cp -R public/. _site/
-          cp CNAME _site/
-          cp .nojekyll _site/
-
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: public
 
       - name: Deploy to GitHub Pages
         id: deployment
