@@ -149,6 +149,8 @@ function bindEvents() {
     event.stopPropagation();
     openRelatedIdiom(link.dataset.relatedIdiom);
   });
+
+  window.addEventListener("popstate", syncFromLocation);
 }
 
 function prepareIdiom(item) {
@@ -360,20 +362,16 @@ function applySearchFromUrl() {
   const filter = params.get("filter") || "all";
   const openId = params.get("id") || "";
 
-  if (query) {
-    els.input.value = query;
-    state.query = normalize(query);
-  }
+  els.input.value = query;
+  state.query = normalize(query);
 
-  if (["all", "main", "phrase", "story"].includes(filter)) {
-    state.filter = filter;
-    els.filters.forEach(item => item.classList.toggle("is-active", item.dataset.filter === filter));
-  }
+  state.filter = ["all", "main", "phrase", "story"].includes(filter) ? filter : "all";
+  els.filters.forEach(item => item.classList.toggle("is-active", item.dataset.filter === state.filter));
 
   state.openId = openId;
 }
 
-function updateLocationFromState(openId, onlyOpenId = false) {
+function updateLocationFromState(openId, onlyOpenId = false, mode = "replace") {
   const params = new URLSearchParams();
   const q = els.input.value.trim();
 
@@ -388,7 +386,10 @@ function updateLocationFromState(openId, onlyOpenId = false) {
 
   const next = params.toString();
   const nextUrl = next ? `${window.location.pathname}?${next}` : window.location.pathname;
-  window.history.replaceState({}, "", nextUrl);
+  if (nextUrl === `${window.location.pathname}${window.location.search}`) return;
+
+  const method = mode === "push" ? "pushState" : "replaceState";
+  window.history[method]({}, "", nextUrl);
 }
 
 function findIdiomByIdentifier(identifier) {
@@ -407,10 +408,10 @@ function openRelatedIdiom(name) {
   els.input.value = item.成語;
   state.query = normalize(item.成語);
   renderResults([item]);
-  openIdiomModal(item);
+  openIdiomModal(item, true, "push");
 }
 
-function openIdiomModal(item, andUpdateUrl = true) {
+function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
   if (!item) return;
 
   const id = String(item.編號 || item.成語);
@@ -468,18 +469,39 @@ function openIdiomModal(item, andUpdateUrl = true) {
   els.modal.classList.remove("is-hidden");
   els.modal.setAttribute("aria-hidden", "false");
 
-  if (andUpdateUrl) updateLocationFromState(id, true);
+  if (andUpdateUrl) updateLocationFromState(id, true, historyMode);
 
   requestAnimationFrame(() => {
     if (favoriteInModal) favoriteInModal.focus();
   });
 }
 
-function closeIdiomModal() {
+function hideIdiomModal() {
   state.openId = "";
   els.modal.classList.add("is-hidden");
   els.modal.setAttribute("aria-hidden", "true");
+}
+
+function closeIdiomModal() {
+  hideIdiomModal();
   updateLocationFromState();
+}
+
+function syncFromLocation() {
+  applySearchFromUrl();
+  renderResults(state.query ? searchIdioms() : pickOpeningSet());
+
+  if (!state.openId) {
+    hideIdiomModal();
+    return;
+  }
+
+  const target = findIdiomByIdentifier(state.openId);
+  if (target) {
+    openIdiomModal(target, false);
+  } else {
+    hideIdiomModal();
+  }
 }
 
 async function loadData() {
@@ -540,7 +562,7 @@ function renderLinkedText(text) {
     html += escapeHtml(value.slice(lastIndex, match.index));
 
     if (state.idiomByName.has(name)) {
-      html += `<button class="related-idiom-link" type="button" data-related-idiom="${escapeHtml(name)}">${escapeHtml(quoted)}</button>`;
+      html += `「<button class="related-idiom-link" type="button" data-related-idiom="${escapeHtml(name)}">${escapeHtml(name)}</button>」`;
     } else {
       html += escapeHtml(quoted);
     }
