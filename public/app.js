@@ -1,6 +1,7 @@
 const DATA_URL = "dict_idioms_2020_20260324.min.json";
 const MAX_RESULTS = 24;
 const FAVORITES_KEY = "dict-idioms-favorites";
+const PRONUNCIATION_MODE_KEY = "dict-idioms-pronunciation-mode";
 const DEFAULT_OPEN_COUNT = 6;
 
 const state = {
@@ -9,6 +10,7 @@ const state = {
   query: "",
   filter: "all",
   openId: "",
+  pronunciationMode: readPronunciationMode(),
   dailyItem: null,
   favorites: new Set(readFavorites())
 };
@@ -250,13 +252,8 @@ function createCard(item, index) {
     toggleFavorite(item);
   });
 
-  card.querySelector(".view-button").addEventListener("click", event => {
-    event.stopPropagation();
-    openIdiomModal(item);
-  });
-
   card.addEventListener("click", event => {
-    if (event.target.closest("button,details,summary,.favorite-button,.view-button")) return;
+    if (event.target.closest("button,details,summary,.favorite-button")) return;
     openIdiomModal(item);
   });
 
@@ -597,31 +594,15 @@ function setupPronunciationToggle(button, item) {
   const zhuyin = cleanText(item.注音);
   const pinyin = cleanText(item.漢語拼音);
   const hasBoth = Boolean(zhuyin && pinyin);
-  let mode = zhuyin ? "zhuyin" : "pinyin";
-
-  const render = () => {
-    const label = mode === "zhuyin" ? "注音" : "拼音";
-    button.classList.toggle("is-zhuyin", mode === "zhuyin");
-    button.classList.toggle("is-pinyin", mode === "pinyin");
-
-    if (mode === "zhuyin") {
-      button.innerHTML = renderZhuyinSyllables(zhuyin);
-    } else {
-      button.innerHTML = renderPronunciationSyllables(pinyin);
-    }
-
-    button.disabled = !hasBoth;
-    button.setAttribute("aria-label", hasBoth ? `${label}，點擊切換${mode === "zhuyin" ? "拼音" : "注音"}` : label);
-  };
+  button._pronunciation = { zhuyin, pinyin, hasBoth };
 
   button.onclick = event => {
     event.stopPropagation();
     if (!hasBoth) return;
-    mode = mode === "zhuyin" ? "pinyin" : "zhuyin";
-    render();
+    setPronunciationMode(currentPronunciationMode(button) === "zhuyin" ? "pinyin" : "zhuyin");
   };
 
-  render();
+  renderPronunciationButton(button);
 }
 
 function renderZhuyinSyllables(value) {
@@ -634,6 +615,32 @@ function renderPronunciationSyllables(value) {
     .filter(Boolean)
     .map(syllable => `<span class="pronunciation__syllable">${escapeHtml(syllable)}</span>`)
     .join("");
+}
+
+function currentPronunciationMode(button) {
+  const data = button._pronunciation || {};
+  if (state.pronunciationMode === "pinyin" && data.pinyin) return "pinyin";
+  if (data.zhuyin) return "zhuyin";
+  return "pinyin";
+}
+
+function renderPronunciationButton(button) {
+  const data = button._pronunciation || {};
+  const mode = currentPronunciationMode(button);
+  const label = mode === "zhuyin" ? "注音" : "拼音";
+  const text = mode === "zhuyin" ? data.zhuyin : data.pinyin;
+
+  button.classList.toggle("is-zhuyin", mode === "zhuyin");
+  button.classList.toggle("is-pinyin", mode === "pinyin");
+  button.innerHTML = renderPronunciationSyllables(text);
+  button.disabled = !data.hasBoth;
+  button.setAttribute("aria-label", data.hasBoth ? `${label}，點擊切換${mode === "zhuyin" ? "拼音" : "注音"}` : label);
+}
+
+function setPronunciationMode(mode) {
+  state.pronunciationMode = mode === "pinyin" ? "pinyin" : "zhuyin";
+  savePronunciationMode();
+  document.querySelectorAll(".pronunciation").forEach(renderPronunciationButton);
 }
 
 function randomItem(items) {
@@ -660,6 +667,20 @@ function readFavorites() {
 
 function saveFavorites() {
   localStorage.setItem(FAVORITES_KEY, JSON.stringify([...state.favorites]));
+}
+
+function readPronunciationMode() {
+  try {
+    return localStorage.getItem(PRONUNCIATION_MODE_KEY) === "pinyin" ? "pinyin" : "zhuyin";
+  } catch {
+    return "zhuyin";
+  }
+}
+
+function savePronunciationMode() {
+  try {
+    localStorage.setItem(PRONUNCIATION_MODE_KEY, state.pronunciationMode);
+  } catch {}
 }
 
 function escapeHtml(value) {
