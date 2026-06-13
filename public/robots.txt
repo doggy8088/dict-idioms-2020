@@ -1,0 +1,12 @@
+User-agent: facebookexternalhit
+Allow: /
+Allow: /og-image.jpg
+
+User-agent: Facebot
+Allow: /
+Allow: /og-image.jpg
+
+User-agent: *
+Allow: /
+
+Sitemap: https://dict-idioms.gh.miniasp.com/sitemap.xml
