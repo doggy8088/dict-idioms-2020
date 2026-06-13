@@ -605,6 +605,33 @@ summary:focus-visible,
   transition: transform 160ms var(--ease-ui), color 160ms var(--ease-ui);
 }
 
+.pronunciation.is-zhuyin {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+}
+
+.pronunciation.is-pinyin {
+  display: block;
+}
+
+.pronunciation__syllable {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.15em;
+  padding: 0.18rem 0.38rem;
+  border: 1px solid rgba(49, 93, 115, 0.24);
+  border-radius: 999px;
+  color: var(--lake);
+  background:
+    linear-gradient(rgba(255, 250, 239, 0.78), rgba(255, 250, 239, 0.78)) padding-box,
+    linear-gradient(135deg, rgba(49, 93, 115, 0.28), rgba(255, 255, 255, 0.45)) border-box;
+  font-weight: 900;
+  line-height: 1.38;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.62) inset;
+}
+
 .pronunciation:disabled {
   cursor: default;
 }

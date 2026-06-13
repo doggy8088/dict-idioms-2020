@@ -596,7 +596,15 @@ function setupPronunciationToggle(button, item) {
 
   const render = () => {
     const label = mode === "zhuyin" ? "注音" : "拼音";
-    button.textContent = mode === "zhuyin" ? zhuyin : pinyin;
+    button.classList.toggle("is-zhuyin", mode === "zhuyin");
+    button.classList.toggle("is-pinyin", mode === "pinyin");
+
+    if (mode === "zhuyin") {
+      button.innerHTML = renderZhuyinSyllables(zhuyin);
+    } else {
+      button.textContent = pinyin;
+    }
+
     button.disabled = !hasBoth;
     button.setAttribute("aria-label", hasBoth ? `${label}，點擊切換${mode === "zhuyin" ? "拼音" : "注音"}` : label);
   };
@@ -609,6 +617,14 @@ function setupPronunciationToggle(button, item) {
   };
 
   render();
+}
+
+function renderZhuyinSyllables(value) {
+  return cleanText(value)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(syllable => `<span class="pronunciation__syllable">${escapeHtml(syllable)}</span>`)
+    .join("");
 }
 
 function randomItem(items) {
