@@ -14,7 +14,6 @@
 - `dict_idioms_2020_20260324.yml`：完整 YAML 資料。
 - `dict_idioms_2020_20260324.min.json`：精簡 JSON 資料。
 - `dict_idioms_2020_20260324.min.yml`：精簡 YAML 資料。
-- `dict_idioms_pic_2020_20260324/`：字圖資料目錄。
 - `downloads/`：官方原始下載檔與試算表備份。
 
 依本資料庫現有檔案實際統計：
