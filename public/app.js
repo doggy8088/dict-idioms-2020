@@ -427,6 +427,162 @@ function listBlock(title, values, limit, highlightTerm = "") {
   return `<section class="${className}"><h4>${escapeHtml(title)}</h4><ul${listClass}>${list}</ul></section>`;
 }
 
+function identificationQuizBlock(item) {
+  const quiz = parseIdentificationQuiz(item["辨識-例句"]);
+  if (!quiz) return "";
+
+  const quizId = `quiz-${String(item.編號 || item.成語 || "idiom")
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .toLowerCase()
+    .slice(0, 32)}`;
+
+  const questions = quiz.questions
+    .map((question, index) => {
+      const parts = splitPlaceholderSentence(question.sentence);
+      if (parts.length < 2) return "";
+
+      const before = renderLinkedText(parts[0] || "");
+      const after = renderLinkedText(parts.slice(1).join(""));
+      const selectId = `${quizId}-${index}`;
+      const correct = question.correct;
+
+      return `
+        <div class="quiz-question">
+          <label for="${selectId}" class="sr-only">填空題 ${index + 1}</label>
+          <p class="quiz-sentence">
+            ${before}<select
+              id="${selectId}"
+              class="quiz-select"
+              data-correct="${escapeHtml(correct)}"
+              data-option-a="${escapeHtml(quiz.options[0])}"
+              data-option-b="${escapeHtml(quiz.options[1])}"
+              aria-label="選擇適合此空格的成語"
+            >
+              <option value="" disabled selected>請選擇</option>
+              <option value="0">${escapeHtml(quiz.options[0])}</option>
+              <option value="1">${escapeHtml(quiz.options[1])}</option>
+              <option value="both">兩者皆可</option>
+            </select>${after}
+          </p>
+          <p class="quiz-feedback" role="status" aria-live="polite">請先選擇答案。</p>
+          <span class="quiz-celebration" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i>
+          </span>
+        </div>
+      `;
+    })
+    .join("");
+
+  return `
+    <section class="detail-block quiz-block">
+      <h4>趣味測驗</h4>
+      <p class="quiz-instruction">以下句子有一個空格，請選擇最適合的成語。</p>
+      <div class="quiz-question-list">${questions}</div>
+    </section>
+  `;
+}
+
+function parseIdentificationQuiz(rawValue) {
+  if (!Array.isArray(rawValue) || rawValue.length < 2) return null;
+
+  const options = String(rawValue[0] || "")
+    .split("\t")
+    .map(item => cleanText(item))
+    .map(item => item.trim())
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (options.length < 2) return null;
+
+  const questions = rawValue
+    .slice(1)
+    .map(item => parseIdentificationQuestion(item))
+    .filter(Boolean);
+
+  if (!questions.length) return null;
+  return { options, questions };
+}
+
+function parseIdentificationQuestion(rawItem) {
+  if (typeof rawItem !== "string") return null;
+
+  const parts = rawItem.split("\t");
+  if (parts.length < 3) return null;
+
+  const sentence = parts.slice(2).join("\t").trim();
+  const sentenceParts = splitPlaceholderSentence(sentence);
+  if (sentenceParts.length < 2) return null;
+
+  const firstMark = isCorrectMarker(parts[0]);
+  const secondMark = isCorrectMarker(parts[1]);
+  let correct = "";
+
+  if (firstMark && secondMark) correct = "both";
+  else if (firstMark) correct = "0";
+  else if (secondMark) correct = "1";
+
+  if (!correct) return null;
+  return { sentence, correct };
+}
+
+function splitPlaceholderSentence(sentence) {
+  return String(sentence || "").split(/[~∼]/);
+}
+
+function isCorrectMarker(value) {
+  return String(value || "").trim().includes("○");
+}
+
+function bindIdentificationQuizEvents() {
+  els.modalContent.querySelectorAll(".quiz-select").forEach(select => {
+    select.addEventListener("change", handleQuizAnswer);
+  });
+}
+
+function handleQuizAnswer(event) {
+  const select = event.target;
+  const question = select.closest(".quiz-question");
+  if (!question) return;
+
+  const feedback = question.querySelector(".quiz-feedback");
+  const celebration = question.querySelector(".quiz-celebration");
+  const correct = select.dataset.correct || "";
+  const optionA = select.dataset.optionA || "";
+  const optionB = select.dataset.optionB || "";
+  const selected = select.value;
+
+  select.classList.remove("is-correct", "is-wrong");
+  question.classList.remove("is-correct", "is-wrong");
+  feedback.classList.remove("is-correct", "is-wrong");
+
+  if (!selected) {
+    feedback.textContent = "請先選擇答案。";
+    return;
+  }
+
+  const selectedText = selected === "both" ? "兩者皆可" : selected === "0" ? optionA : optionB;
+  const isCorrect = selected === correct;
+
+  if (isCorrect) {
+    select.classList.add("is-correct");
+    question.classList.add("is-correct");
+    feedback.classList.add("is-correct");
+    feedback.textContent = `答對了！「${selectedText}」就是這句的關鍵成語。`;
+    if (celebration) {
+      celebration.classList.remove("is-active");
+      void celebration.offsetWidth;
+      celebration.classList.add("is-active");
+    }
+    return;
+  }
+
+  select.classList.add("is-wrong");
+  question.classList.add("is-wrong");
+  feedback.classList.add("is-wrong");
+  feedback.textContent = `再想想，${selectedText} 不是這句的正確答案。`;
+}
+
 function renderEvidenceItem(item) {
   const match = String(item || "").match(/^(\d\d\.)\s*(.*)$/);
   if (!match) return `<li>${renderLinkedText(item)}</li>`;
@@ -580,7 +736,8 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
     identificationBlock(item),
     idiomListBlock("近義", item.近義成語),
     idiomListBlock("反義", item.反義成語),
-    idiomListBlock("參考詞語", item.參考詞語)
+    idiomListBlock("參考詞語", item.參考詞語),
+    identificationQuizBlock(item)
   ].filter(Boolean);
 
   els.modalContent.innerHTML = `
@@ -621,6 +778,8 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
       }, 1600);
     });
   }
+
+  bindIdentificationQuizEvents();
 
   els.modal.classList.remove("is-hidden");
   els.modal.setAttribute("aria-hidden", "false");
