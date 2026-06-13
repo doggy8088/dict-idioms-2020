@@ -106,7 +106,7 @@ function bindEvents() {
   });
 
   els.randomTop.addEventListener("click", () => {
-    const item = randomItem(state.idioms);
+    const item = randomMainIdiom();
     if (!item) return;
     els.input.value = item.成語;
     state.query = normalize(item.成語);
@@ -346,8 +346,7 @@ function renderFavorites() {
 }
 
 function setDailyCard() {
-  const mainIdioms = state.idioms.filter(item => item._main);
-  const item = randomItem(mainIdioms.length ? mainIdioms : state.idioms);
+  const item = randomMainIdiom();
   if (!item) return;
   state.dailyItem = item;
   els.dailyIdiom.textContent = item.成語;
@@ -355,6 +354,11 @@ function setDailyCard() {
   els.dailyCard.setAttribute("tabindex", "0");
   els.dailyCard.setAttribute("role", "button");
   els.dailyCard.setAttribute("aria-label", `開啟今日成語卡：${item.成語}`);
+}
+
+function randomMainIdiom() {
+  const mainIdioms = state.idioms.filter(item => item._main);
+  return randomItem(mainIdioms.length ? mainIdioms : state.idioms);
 }
 
 function applySearchFromUrl() {
