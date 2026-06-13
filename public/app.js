@@ -234,7 +234,9 @@ function scoreItem(item, tokens) {
 }
 
 function pickOpeningSet(items = state.idioms) {
-  const list = [...items];
+  const list = items.filter(item => item._main).length
+    ? items.filter(item => item._main)
+    : items;
   const shuffled = shuffle(list);
   return shuffled.slice(0, Math.min(DEFAULT_OPEN_COUNT, shuffled.length));
 }
