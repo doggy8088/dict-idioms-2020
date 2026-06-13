@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="description" content="一個溫暖、好玩、適合親子與學生使用的教育部《成語典》查詢工具。">
+  <title>成語星球 | 教育部《成語典》查詢工具</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chocolate+Classical+Sans&family=Noto+Serif+TC:wght@600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#results">跳到查詢結果</a>
+
+  <main class="page-shell">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero__glow hero__glow--one" aria-hidden="true"></div>
+      <div class="hero__glow hero__glow--two" aria-hidden="true"></div>
+      <div class="hero__copy">
+        <p class="eyebrow">教育部《成語典》互動查詢</p>
+        <h1 id="page-title">把每一句成語，變成今天的小故事。</h1>
+        <p class="hero__lead">輸入成語、注音、拼音、意思或例句，快速找到解釋、典故與用法。畫面保留閱讀溫度，也讓孩子能用探索的方式學成語。</p>
+        <div class="hero__actions" aria-label="快速操作">
+          <a class="button button--primary" href="#search-panel">開始查詢</a>
+          <button class="button button--secondary" id="randomTop" type="button">抽一張成語卡</button>
+        </div>
+      </div>
+      <aside class="memory-card" aria-label="今日成語卡">
+        <span class="memory-card__label">今日成語卡</span>
+        <strong id="dailyIdiom">載入中</strong>
+        <p id="dailyMeaning">正在翻開字典裡的一頁。</p>
+      </aside>
+    </section>
+
+    <section class="search-panel" id="search-panel" aria-labelledby="search-title">
+      <div class="search-panel__heading">
+        <div>
+          <p class="eyebrow">查詢入口</p>
+          <h2 id="search-title">想找哪一句成語？</h2>
+        </div>
+        <p class="status" id="dataStatus" role="status">正在載入資料</p>
+      </div>
+
+      <form class="search-box" id="searchForm" role="search">
+        <label class="sr-only" for="queryInput">輸入成語、注音、拼音、釋義或例句</label>
+        <input id="queryInput" name="q" type="search" autocomplete="off" placeholder="例如：一毛不拔、yī máo、吝嗇、努力" spellcheck="false">
+        <button class="button button--search" type="submit">查詢</button>
+      </form>
+
+      <div class="filters" aria-label="查詢篩選">
+        <button class="filter is-active" type="button" data-filter="all">全部</button>
+        <button class="filter" type="button" data-filter="main">主條成語</button>
+        <button class="filter" type="button" data-filter="phrase">參考詞語</button>
+        <button class="filter" type="button" data-filter="story">有典故</button>
+      </div>
+
+      <div class="quick-picks" aria-label="快速探索">
+        <button type="button" data-query="努力">努力</button>
+        <button type="button" data-query="勇敢">勇敢</button>
+        <button type="button" data-query="朋友">朋友</button>
+        <button type="button" data-query="學習">學習</button>
+        <button type="button" data-query="自欺欺人">自欺欺人</button>
+      </div>
+    </section>
+
+    <section class="content-grid" aria-label="查詢內容">
+      <aside class="toolbox" aria-label="學習工具箱">
+        <section class="panel favorites-panel" aria-labelledby="favorites-title">
+          <div class="panel__title-row">
+            <h2 id="favorites-title">我的收藏</h2>
+            <button class="link-button" id="clearFavorites" type="button">清空</button>
+          </div>
+          <div id="favoritesList" class="mini-list" aria-live="polite"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="tips-title">
+          <h2 id="tips-title">親子共學玩法</h2>
+          <ol class="play-list">
+            <li>先猜成語意思，再打開典故。</li>
+            <li>從例句挑一句，改寫成自己的生活句子。</li>
+            <li>把近義與反義成語配對，比一比語氣差在哪裡。</li>
+          </ol>
+        </section>
+      </aside>
+
+      <section class="results-wrap" aria-labelledby="results-title">
+        <div class="results-head">
+          <div>
+            <p class="eyebrow">查詢結果</p>
+            <h2 id="results-title">成語卡片</h2>
+          </div>
+          <p id="resultCount" class="result-count">尚未查詢</p>
+        </div>
+        <div id="results" class="results" tabindex="-1" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2026 本工具由 <a href="https://www.facebook.com/will.fans/" target="_blank" rel="noopener">Will 保哥的技術交流中心</a> 設計、開發與維護 | <a href="https://github.com/doggy8088/dict-idioms-2020" target="_blank" rel="noopener">GitHub</a></p>
+  </footer>
+
+  <template id="idiomTemplate">
+    <article class="idiom-card">
+      <div class="idiom-card__top">
+        <div>
+          <p class="idiom-card__number"></p>
+          <h3></h3>
+          <p class="pronunciation"></p>
+        </div>
+        <button class="favorite-button" type="button" aria-label="加入收藏">收藏</button>
+      </div>
+      <p class="meaning"></p>
+      <div class="tags"></div>
+      <button class="view-button" type="button">放大檢視</button>
+      <details>
+        <summary>看典故與用法</summary>
+        <div class="detail-body"></div>
+      </details>
+    </article>
+  </template>
+
+  <div id="idiomModal" class="modal is-hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="idiomModalTitle">
+    <div class="modal__overlay" data-close-modal></div>
+    <section class="modal__dialog">
+      <header class="modal__header">
+        <p class="modal__kind" id="idiomModalKind"></p>
+        <h2 id="idiomModalTitle"></h2>
+        <p class="modal__subtitle" id="idiomModalPronunciation"></p>
+        <button id="idiomModalClose" class="modal__close" type="button" aria-label="關閉">關閉</button>
+      </header>
+      <div id="idiomModalContent" class="modal__content"></div>
+    </section>
+  </div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
