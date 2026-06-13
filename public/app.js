@@ -461,8 +461,22 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
   }
 
   if (shareInModal) {
-    shareInModal.addEventListener("click", () => {
-      navigator.clipboard?.writeText(window.location.href).catch(() => {});
+    shareInModal.setAttribute("aria-live", "polite");
+    shareInModal.addEventListener("click", async () => {
+      const originalText = "複製分享連結";
+      shareInModal.disabled = true;
+
+      try {
+        await navigator.clipboard?.writeText(window.location.href);
+        shareInModal.textContent = "已複製";
+      } catch {
+        shareInModal.textContent = "複製失敗";
+      }
+
+      window.setTimeout(() => {
+        shareInModal.textContent = originalText;
+        shareInModal.disabled = false;
+      }, 1600);
     });
   }
 
