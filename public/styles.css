@@ -605,14 +605,11 @@ summary:focus-visible,
   transition: transform 160ms var(--ease-ui), color 160ms var(--ease-ui);
 }
 
-.pronunciation.is-zhuyin {
+.pronunciation.is-zhuyin,
+.pronunciation.is-pinyin {
   display: flex;
   flex-wrap: wrap;
   gap: 0.38rem;
-}
-
-.pronunciation.is-pinyin {
-  display: block;
 }
 
 .pronunciation__syllable {

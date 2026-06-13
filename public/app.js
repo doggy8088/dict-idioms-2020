@@ -602,7 +602,7 @@ function setupPronunciationToggle(button, item) {
     if (mode === "zhuyin") {
       button.innerHTML = renderZhuyinSyllables(zhuyin);
     } else {
-      button.textContent = pinyin;
+      button.innerHTML = renderPronunciationSyllables(pinyin);
     }
 
     button.disabled = !hasBoth;
@@ -620,6 +620,10 @@ function setupPronunciationToggle(button, item) {
 }
 
 function renderZhuyinSyllables(value) {
+  return renderPronunciationSyllables(value);
+}
+
+function renderPronunciationSyllables(value) {
   return cleanText(value)
     .split(/\s+/)
     .filter(Boolean)
