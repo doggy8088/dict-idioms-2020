@@ -18,6 +18,10 @@
 - `make serve HOST=127.0.0.1 PORT=3000`：切換主機與埠號。
 - `make help`：查看可用目標與用途。
 
+## 快取更新規範
+
+- 每次變更 `public/app.js` 或 `public/styles.css` 後，必須同步更新 `public/index.html` 中引用這兩個檔案的 `v` 查詢參數，避免瀏覽器快取舊版本。
+
 ## 程式風格與命名
 
 - 以現有慣例為準，使用 2 空白縮排、分號、`const`/`let`、箭頭函式為主。
