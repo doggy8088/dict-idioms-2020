@@ -2205,10 +2205,11 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
 
   const id = String(item.編號 || item.成語);
   const sourceId = String(item.編號 || "").trim();
+  const idiomForSearch = String(item.成語 || "").trim();
   state.openId = id;
   els.modalKind.textContent = item["主條成語／非主條成語"] || "成語條目";
   els.modalId.innerHTML = sourceId
-    ? `編號 <a href="https://dict.idioms.moe.edu.tw/idiomView.jsp?ID=${encodeURIComponent(sourceId)}" target="_blank" rel="noopener">${escapeHtml(sourceId)}</a>`
+    ? `編號 <a href="https://dict.idioms.moe.edu.tw/idiomList.jsp?idiom=${encodeURIComponent(idiomForSearch)}" target="_blank" rel="noopener">${escapeHtml(sourceId)}</a>`
     : "編號 未載明";
   els.modalTitle.textContent = item.成語 || "未命名成語";
   setupPronunciationToggle(els.modalPronunciation, item);
