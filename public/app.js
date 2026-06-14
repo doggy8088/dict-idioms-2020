@@ -6,6 +6,7 @@ const FAVORITES_EXPORT_SCHEMA = "dict-idioms-favorites@1";
 const FAVORITE_DRAG_THRESHOLD = 6;
 const PRONUNCIATION_MODE_KEY = "dict-idioms-pronunciation-mode";
 const DEFAULT_OPEN_COUNT = 6;
+const IME_COMPOSITION_TOLERANCE_MS = 300;
 const QUICK_KEYWORDS = [
   "人心", "友情", "學習", "努力", "勇敢", "智慧",
   "成功", "失敗", "誠實", "謙虛", "驕傲", "勤奮",
@@ -63,6 +64,8 @@ let favoriteTitleBeforeEdit = state.favoritesTitle;
 let favoriteStatusTimer = 0;
 let favoritePointerDrag = null;
 let suppressFavoriteClick = false;
+let isQueryInputComposing = false;
+let lastQueryCompositionEnd = 0;
 
 init();
 
@@ -117,6 +120,15 @@ function bindEvents() {
     state.currentPage = 1;
     renderResults(searchIdioms());
     updateLocationFromState();
+  });
+
+  els.input.addEventListener("compositionstart", () => {
+    isQueryInputComposing = true;
+  });
+
+  els.input.addEventListener("compositionend", () => {
+    isQueryInputComposing = false;
+    lastQueryCompositionEnd = Date.now();
   });
 
   els.filters.forEach(button => {
@@ -221,6 +233,8 @@ function bindEvents() {
 }
 
 function handleGlobalKeyboardShortcuts(event) {
+  const isEscapeKey = event.key === "Escape" || event.key === "Esc" || event.keyCode === 27;
+
   if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && !els.modal.classList.contains("is-hidden") && !isKeyboardTextTarget(event.target)) {
     event.preventDefault();
     openAdjacentVisibleResult(event.key === "ArrowRight" ? 1 : -1);
@@ -234,7 +248,15 @@ function handleGlobalKeyboardShortcuts(event) {
     return;
   }
 
-  if (event.key !== "Escape") return;
+  if (!isEscapeKey) return;
+
+  const inputFocused = document.activeElement === els.input;
+  const composingInQueryInput = isQueryInputComposing || event.isComposing;
+  const escapedRightAfterCompositionEnd = inputFocused && (Date.now() - lastQueryCompositionEnd <= IME_COMPOSITION_TOLERANCE_MS);
+  const inputTarget = event.target === els.input;
+  if ((composingInQueryInput || escapedRightAfterCompositionEnd) && (inputFocused || inputTarget)) {
+    return;
+  }
 
   if (!els.modal.classList.contains("is-hidden")) {
     closeIdiomModal();
@@ -245,11 +267,13 @@ function handleGlobalKeyboardShortcuts(event) {
   if (!els.input.value && !state.query) return;
 
   event.preventDefault();
+  const hadQuery = Boolean(els.input.value || state.query);
   els.input.value = "";
   state.query = "";
   state.currentPage = 1;
   renderResults(pickOpeningSet());
-  updateLocationFromState();
+  const historyMode = hadQuery ? "push" : "replace";
+  updateLocationFromState(undefined, false, historyMode);
 }
 
 function isKeyboardTextTarget(target) {
