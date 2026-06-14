@@ -335,7 +335,7 @@ function pickOpeningSet(items = state.idioms) {
   return shuffled.slice(0, Math.min(DEFAULT_OPEN_COUNT, shuffled.length));
 }
 
-function renderResults(items) {
+function renderResults(items, options = {}) {
   els.results.innerHTML = "";
   state.visibleResults = [...items];
 
@@ -349,7 +349,7 @@ function renderResults(items) {
   items.forEach((item, index) => fragment.appendChild(createCard(item, index)));
   els.results.appendChild(fragment);
 
-  const label = state.query ? `顯示 ${items.length} 筆結果` : `先放上 ${items.length} 張推薦卡`;
+  const label = options.label || (state.query ? `顯示 ${items.length} 筆結果` : `先放上 ${items.length} 張推薦卡`);
   els.resultCount.textContent = label;
 }
 
@@ -712,9 +712,7 @@ function toggleFavorite(item) {
 }
 
 function renderFavorites() {
-  const saved = [...state.favorites]
-    .map(key => state.idioms.find(item => String(item.編號 || item.成語) === key))
-    .filter(Boolean);
+  const saved = favoriteItems();
 
   syncFavoritesCount(saved.length);
 
@@ -758,12 +756,18 @@ function renderFavorites() {
         return;
       }
 
-      els.input.value = item.成語;
-      state.query = normalize(item.成語);
-      renderResults([item]);
-      updateLocationFromState(item.編號 || item.成語, true);
+      els.input.value = "";
+      state.query = "";
+      renderResults(favoriteItems(), { label: `顯示 ${saved.length} 筆收藏` });
+      openIdiomModal(item, true, "replace");
     });
   });
+}
+
+function favoriteItems() {
+  return [...state.favorites]
+    .map(key => state.idioms.find(item => String(item.編號 || item.成語) === key))
+    .filter(Boolean);
 }
 
 function syncFavoritesCount(count = state.favorites.size) {
