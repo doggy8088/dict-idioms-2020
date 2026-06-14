@@ -2005,11 +2005,7 @@ function startFavoriteTitleEdit(options = {}) {
   }
   els.favoritesTitle.setAttribute("contenteditable", "true");
   els.favoritesTitle.classList.add("is-editing");
-  try {
-    els.favoritesTitle.focus({ preventScroll: true });
-  } catch {
-    els.favoritesTitle.focus();
-  }
+  focusElementWithoutScroll(els.favoritesTitle);
   if (!shouldClearTitleInput) {
     selectElementText(els.favoritesTitle);
   }
@@ -2018,8 +2014,31 @@ function startFavoriteTitleEdit(options = {}) {
 function scrollToFavoritesTitleInput() {
   if (!(els.favoritesTitle instanceof Element)) return;
   if (typeof els.favoritesTitle.scrollIntoView === "function") {
-    els.favoritesTitle.scrollIntoView({ behavior: "smooth", block: "center" });
+    els.favoritesTitle.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
   }
+}
+
+function focusElementWithoutScroll(element) {
+  if (!(element instanceof Element)) return;
+
+  const scrollTop = window.scrollY || window.pageYOffset;
+  const scrollLeft = window.scrollX || window.pageXOffset;
+
+  try {
+    element.focus({ preventScroll: true });
+  } catch {
+    element.focus();
+  }
+
+  requestAnimationFrame(() => {
+    if (window.scrollY !== scrollTop || window.scrollX !== scrollLeft) {
+      window.scrollTo({
+        left: scrollLeft,
+        top: scrollTop,
+        behavior: "auto"
+      });
+    }
+  });
 }
 
 function getDraftCancelMessage() {
