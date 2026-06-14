@@ -237,7 +237,7 @@ function bindEvents() {
       isNewCollectionDraft: true,
       newCollectionId: collectionId,
       draftAction: "new",
-      focusFavoritesTitle: true
+      preserveScroll: true
     });
     setFavoritesStatus("已新增空白收藏清單");
   });
@@ -261,7 +261,7 @@ function bindEvents() {
       newCollectionId: collectionId,
       draftBaseTitle: baseTitle,
       draftAction: "duplicate",
-      focusFavoritesTitle: true
+      preserveScroll: true
     });
     setFavoritesStatus("已建立收藏清單複本");
   });
@@ -1252,8 +1252,10 @@ function switchFavoriteCollection(collectionId, options = {}) {
   saveFavorites();
 }
 
-function removeFavoriteCollectionById(collectionId) {
+function removeFavoriteCollectionById(collectionId, options = {}) {
   if (collectionId === DEFAULT_FAVORITE_COLLECTION_ID) return;
+
+  const shouldScrollToResults = options.shouldScrollToResults !== false;
 
   const index = state.favoriteCollections.findIndex(item => item.id === collectionId);
   if (index === -1) return;
@@ -1273,7 +1275,9 @@ function removeFavoriteCollectionById(collectionId) {
     state.query = "";
     els.input.value = "";
     renderFavoritesModeResults();
-    scrollToResultsTitle();
+    if (shouldScrollToResults) {
+      scrollToResultsTitle();
+    }
   }
 
   renderFavoriteCollections();
@@ -1320,6 +1324,28 @@ function createFavoriteCollectionForEditing(rawCollection, editOptions = {}, aut
     startFavoriteTitleEdit(editOptions);
   }
   return collectionId;
+}
+
+function captureScrollPosition() {
+  return {
+    left: window.scrollX || window.pageXOffset,
+    top: window.scrollY || window.pageYOffset
+  };
+}
+
+function restoreScrollPosition(scrollPosition, attempts = 0) {
+  if (!scrollPosition) return;
+  if (window.scrollX === scrollPosition.left && window.scrollY === scrollPosition.top) return;
+
+  window.scrollTo({
+    left: scrollPosition.left,
+    top: scrollPosition.top,
+    behavior: "auto"
+  });
+
+  if (attempts < 6) {
+    window.requestAnimationFrame(() => restoreScrollPosition(scrollPosition, attempts + 1));
+  }
 }
 
 function uniqueFavoriteCollectionTitle(baseTitle) {
@@ -1990,18 +2016,17 @@ function startFavoriteTitleEdit(options = {}) {
 
   const shouldClearTitleInput = Boolean(options.clearTitleInput);
   const isNewCollectionDraft = Boolean(options.isNewCollectionDraft);
-  const shouldFocusFavoritesTitle = Boolean(options.focusFavoritesTitle);
+  const shouldPreserveScroll = Boolean(options.preserveScroll);
   favoriteTitleBeforeEdit = shouldClearTitleInput ? "" : state.favoritesTitle;
   favoriteTitleEditContext = {
     ...options,
     clearTitleInput: shouldClearTitleInput,
-    isNewCollectionDraft
+    isNewCollectionDraft,
+    preserveScroll: shouldPreserveScroll,
+    scrollPosition: shouldPreserveScroll ? captureScrollPosition() : null
   };
   if (shouldClearTitleInput) {
     els.favoritesTitle.textContent = "";
-  }
-  if (shouldFocusFavoritesTitle) {
-    scrollToFavoritesTitleInput();
   }
   els.favoritesTitle.setAttribute("contenteditable", "true");
   els.favoritesTitle.classList.add("is-editing");
@@ -2015,6 +2040,13 @@ function scrollToFavoritesTitleInput() {
   if (!(els.favoritesTitle instanceof Element)) return;
   if (typeof els.favoritesTitle.scrollIntoView === "function") {
     els.favoritesTitle.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+    window.requestAnimationFrame(() => {
+      window.scrollBy({
+        top: -50,
+        left: 0,
+        behavior: "smooth"
+      });
+    });
   }
 }
 
@@ -2049,23 +2081,25 @@ function getDraftCancelMessage() {
 }
 
 function commitFavoriteTitleEdit() {
+  const scrollPosition = favoriteTitleEditContext?.scrollPosition || null;
   const isEmptyInput = isFavoriteTitleInputEmpty();
   const isDraftCreation = Boolean(favoriteTitleEditContext?.isNewCollectionDraft);
-  const draftBaseTitle = normalizeFavoriteTitle(favoriteTitleEditContext?.draftBaseTitle);
-  const isUnchangedDraft = isDraftCreation && !!draftBaseTitle && draftBaseTitle === normalizeFavoriteTitle(els.favoritesTitle.textContent || "");
-  if (isDraftCreation && (isEmptyInput || isUnchangedDraft)) {
+  if (isDraftCreation && isEmptyInput) {
     const draftCollectionId = favoriteTitleEditContext?.newCollectionId;
     const shouldRemoveDraft = Boolean(draftCollectionId);
 
     endFavoriteTitleEdit();
     if (shouldRemoveDraft) {
-      removeFavoriteCollectionById(draftCollectionId);
+      removeFavoriteCollectionById(draftCollectionId, {
+        shouldScrollToResults: false
+      });
       setFavoritesStatus(getDraftCancelMessage());
     } else {
       syncFavoritesTitle();
     }
 
     favoriteTitleEditContext = null;
+    restoreScrollPosition(scrollPosition);
     return;
   }
 
@@ -2082,9 +2116,11 @@ function commitFavoriteTitleEdit() {
 
   if (changed) setFavoritesStatus("已更新收藏標題");
   favoriteTitleEditContext = null;
+  restoreScrollPosition(scrollPosition);
 }
 
 function cancelFavoriteTitleEdit() {
+  const scrollPosition = favoriteTitleEditContext?.scrollPosition || null;
   const isDraftCreation = Boolean(favoriteTitleEditContext?.isNewCollectionDraft);
   const isEmptyInput = isFavoriteTitleInputEmpty();
   const draftBaseTitle = normalizeFavoriteTitle(favoriteTitleEditContext?.draftBaseTitle);
@@ -2095,7 +2131,9 @@ function cancelFavoriteTitleEdit() {
 
     endFavoriteTitleEdit();
     if (shouldRemoveDraft) {
-      removeFavoriteCollectionById(draftCollectionId);
+      removeFavoriteCollectionById(draftCollectionId, {
+        shouldScrollToResults: false
+      });
       setFavoritesStatus(getDraftCancelMessage());
     } else {
       favoriteTitleBeforeEdit = favoriteTitleBeforeEdit ? normalizeFavoriteTitle(favoriteTitleBeforeEdit) : DEFAULT_FAVORITES_TITLE;
@@ -2103,6 +2141,7 @@ function cancelFavoriteTitleEdit() {
     }
 
     favoriteTitleEditContext = null;
+    restoreScrollPosition(scrollPosition);
     return;
   }
 
@@ -2110,6 +2149,7 @@ function cancelFavoriteTitleEdit() {
   endFavoriteTitleEdit();
   syncFavoritesTitle();
   favoriteTitleEditContext = null;
+  restoreScrollPosition(scrollPosition);
 }
 
 function endFavoriteTitleEdit() {
