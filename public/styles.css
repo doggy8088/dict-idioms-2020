@@ -806,7 +806,7 @@ input:focus-visible,
 
 .idiom-card__top {
   display: block;
-  padding-right: clamp(94px, 22%, 132px);
+  padding-right: 0;
 }
 
 .idiom-card__header {
@@ -815,12 +815,14 @@ input:focus-visible,
 
 .idiom-card__number {
   margin: 0 0 0.55rem;
+  padding-right: clamp(94px, 22%, 132px);
   color: var(--muted);
   font-size: 0.8rem;
   font-weight: 500;
 }
 
 .idiom-card h3 {
+  padding-right: clamp(94px, 22%, 132px);
   font-size: clamp(1.85rem, 4vw, 3rem);
   letter-spacing: -0.065em;
 }
@@ -842,15 +844,16 @@ input:focus-visible,
 .pronunciation.is-zhuyin,
 .pronunciation.is-pinyin {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.48rem 0.62rem;
 }
 
 .pronunciation__group {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.38rem;
+  min-width: 0;
 }
 
 .pronunciation__variant-label {
@@ -879,6 +882,7 @@ input:focus-visible,
   background:
     linear-gradient(rgba(255, 250, 239, 0.78), rgba(255, 250, 239, 0.78)) padding-box,
     linear-gradient(135deg, rgba(49, 93, 115, 0.28), rgba(255, 255, 255, 0.45)) border-box;
+  font-size: 0.92rem;
   font-weight: 500;
   line-height: 1.38;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.62) inset;
