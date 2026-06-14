@@ -528,6 +528,7 @@ input:focus-visible,
   padding: 0.08rem 0.18rem;
   margin: -0.08rem -0.18rem;
   border-radius: 12px;
+  font-size: 1.9rem;
   overflow-wrap: anywhere;
   transition: background 160ms var(--ease-ui), box-shadow 160ms var(--ease-ui);
 }
@@ -572,6 +573,7 @@ input:focus-visible,
   display: grid;
   gap: 8px;
   margin-top: 12px;
+  counter-reset: favorite-items;
 }
 
 .mini-list button,
@@ -583,11 +585,41 @@ input:focus-visible,
 }
 
 .favorite-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.62rem;
   position: relative;
   cursor: grab;
   touch-action: none;
   user-select: none;
   transition: opacity 160ms var(--ease-ui), transform 160ms var(--ease-ui);
+}
+
+.favorite-list-item::before {
+  counter-increment: favorite-items;
+  content: counter(favorite-items);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  padding-top: 1px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #8f3d32 0%, #c94b35 100%);
+  box-shadow: 0 5px 12px rgba(169, 54, 40, 0.24);
+}
+
+.favorite-drag-preview::before {
+  counter-increment: none;
+  content: attr(data-preview-index);
+}
+
+.favorite-index {
+  display: none;
 }
 
 .favorite-list-item::after {
@@ -632,6 +664,8 @@ input:focus-visible,
 
 .favorite-item-button {
   min-width: 0;
+  flex: 1 1 auto;
+  width: auto;
   padding-right: 3.05rem;
   overflow: hidden;
   text-overflow: ellipsis;

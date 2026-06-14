@@ -753,12 +753,13 @@ function handleFavoritePointerDown(event) {
   const favoriteId = item.dataset.favoriteId || "";
   if (!favoriteId) return;
 
-  favoritePointerDrag = {
-    id: favoriteId,
-    pointerId: getFavoritePointerId(event),
-    source: item,
-    startX: event.clientX,
-    startY: event.clientY,
+	  favoritePointerDrag = {
+	    id: favoriteId,
+	    pointerId: getFavoritePointerId(event),
+	    source: item,
+	    sourceIndex: [...state.favorites].indexOf(favoriteId),
+	    startX: event.clientX,
+	    startY: event.clientY,
     targetId: "",
     placeAfterTarget: false,
     isDragging: false,
@@ -794,11 +795,14 @@ function handleFavoritePointerMove(event) {
 
   if (!target || !els.favoritesList.contains(target) || target.dataset.favoriteId === favoritePointerDrag.id) {
     favoritePointerDrag.targetId = "";
+    favoritePointerDrag.placeAfterTarget = false;
+    updateFavoriteDragPreviewIndex(favoritePointerDrag);
     return;
   }
 
   favoritePointerDrag.targetId = target.dataset.favoriteId || "";
   favoritePointerDrag.placeAfterTarget = setFavoriteDropPosition(target, event.clientY);
+  updateFavoriteDragPreviewIndex(favoritePointerDrag);
 }
 
 function handleFavoritePointerUp(event) {
@@ -847,6 +851,7 @@ function createFavoriteDragPreview(drag, event) {
   preview.classList.remove("is-dragging", "is-drop-before", "is-drop-after");
   preview.classList.add("favorite-drag-preview");
   preview.setAttribute("aria-hidden", "true");
+  updateFavoriteDragPreviewIndex(drag);
   preview.inert = true;
   preview.querySelectorAll("button").forEach(button => {
     button.tabIndex = -1;
@@ -864,6 +869,27 @@ function updateFavoriteDragPreview(drag, clientX, clientY) {
   const x = Math.round(clientX - drag.offsetX);
   const y = Math.round(clientY - drag.offsetY);
   drag.preview.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+}
+
+function updateFavoriteDragPreviewIndex(drag) {
+  if (!drag.preview) return;
+
+  drag.preview.dataset.previewIndex = String(getFavoritePreviewIndex(drag));
+}
+
+function getFavoritePreviewIndex(drag) {
+  const favoriteKeys = [...state.favorites];
+  const sourceIndex = favoriteKeys.indexOf(drag.id);
+  if (sourceIndex === -1) return 1;
+
+  if (!drag.targetId) return sourceIndex + 1;
+
+  const orderedKeys = favoriteKeys.filter(key => key !== drag.id);
+  let insertIndex = orderedKeys.indexOf(drag.targetId);
+  if (insertIndex === -1) return sourceIndex + 1;
+  if (drag.placeAfterTarget) insertIndex += 1;
+
+  return insertIndex + 1;
 }
 
 function setFavoriteDropPosition(item, clientY) {
