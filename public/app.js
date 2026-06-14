@@ -2371,6 +2371,7 @@ function cleanText(value) {
 
 function cleanSourceTitle(value) {
   return String(value || "")
+    .replace(/^※＃/, "")
     .replace(/^＃+/, "")
     .replace(/^#+/, "")
     .replace(/\*\d+\*/g, "")
