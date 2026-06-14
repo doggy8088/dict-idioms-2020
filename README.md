@@ -96,11 +96,12 @@
   - `prefix`：比對成語名稱開頭。
   - `suffix`：比對成語名稱結尾。
   - `any`：預設值，不指定 `match` 時使用，行為採現行關鍵字邏輯（見下）。
-- `filter`：結果類型過濾，值為 `all`、`main`、`phrase`、`story`，未提供時預設 `all`。
+- `filter`：結果類型過濾，值為 `all`、`main`、`phrase`、`story`、`quiz`，未提供時預設 `main`。
   - `all`：全部
   - `main`：主條成語
   - `phrase`：有參考詞語
   - `story`：有典故
+  - `quiz`：有趣味測驗
 - `id`：直接指定成語識別值，開啟對應成語明細。
 
 `match=any` 時的 `q` 規則：

@@ -20,7 +20,7 @@ const state = {
   idiomByName: new Map(),
   query: "",
   matchMode: "any",
-  filter: "all",
+  filter: "main",
   openId: "",
   pronunciationMode: readPronunciationMode(),
   dailyItem: null,
@@ -272,6 +272,8 @@ function setQuickPicks() {
 }
 
 function prepareIdiom(item) {
+  const quiz = parseIdentificationQuiz(item["辨識-例句"]);
+
   const searchable = [
     item.成語,
     item.注音,
@@ -290,7 +292,8 @@ function prepareIdiom(item) {
   return {
     ...item,
     _search: normalize(searchable),
-    _main: item["主條成語／非主條成語"] === "主條成語"
+    _main: item["主條成語／非主條成語"] === "主條成語",
+    _quiz: quiz
   };
 }
 
@@ -300,6 +303,7 @@ function searchIdioms() {
   if (state.filter === "main") items = items.filter(item => item._main);
   if (state.filter === "phrase") items = items.filter(item => item.參考詞語);
   if (state.filter === "story") items = items.filter(item => item.典故說明);
+  if (state.filter === "quiz") items = items.filter(item => item._quiz);
 
   const queryPlan = parseQueryPlan(state.query, state.matchMode);
 
@@ -585,7 +589,7 @@ function listBlock(title, values, limit, highlightTerm = "") {
 }
 
 function identificationQuizBlock(item) {
-  const quiz = parseIdentificationQuiz(item["辨識-例句"]);
+  const quiz = item._quiz || parseIdentificationQuiz(item["辨識-例句"]);
   if (!quiz) return "";
 
   const quizId = `quiz-${String(item.編號 || item.成語 || "idiom")
@@ -1652,7 +1656,7 @@ function randomMainIdiom() {
 function applySearchFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const query = params.get("q") || "";
-  const filter = params.get("filter") || "all";
+  const filter = params.get("filter") || "main";
   const matchParam = (params.get("match") || "any").toLowerCase();
   const openId = params.get("id") || "";
 
@@ -1660,7 +1664,7 @@ function applySearchFromUrl() {
   state.query = normalize(query);
   state.matchMode = ["exact", "prefix", "suffix", "any"].includes(matchParam) ? matchParam : "any";
 
-  state.filter = ["all", "main", "phrase", "story"].includes(filter) ? filter : "all";
+  state.filter = ["all", "main", "phrase", "story", "quiz"].includes(filter) ? filter : "main";
   els.filters.forEach(item => item.classList.toggle("is-active", item.dataset.filter === state.filter));
 
   state.openId = openId;
@@ -1673,7 +1677,7 @@ function updateLocationFromState(openId, onlyOpenId = false, mode = "replace") {
   if (q) params.set("q", q);
   if (state.matchMode && state.matchMode !== "any") params.set("match", state.matchMode);
   else params.delete("match");
-  if (state.filter !== "all") params.set("filter", state.filter);
+  if (state.filter !== "main") params.set("filter", state.filter);
 
   if (onlyOpenId) {
     if (openId && String(openId).length) params.set("id", String(openId));
