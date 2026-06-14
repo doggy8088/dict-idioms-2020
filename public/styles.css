@@ -1061,10 +1061,10 @@ input:focus-visible,
 
 .pronunciation__syllable sup {
   position: relative;
-  top: -0.23em;
+  top: -0.18em;
   left: 0.02em;
   vertical-align: baseline;
-  font-size: 0.68em;
+  font-size: 1em;
   line-height: 1;
   margin: 0;
 }
