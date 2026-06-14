@@ -16,7 +16,23 @@ help:
 
 serve:
 	@printf 'Serving %s at %s\n' '$(PUBLIC_DIR)' '$(URL)'
-	@if [ "$(OPEN_BROWSER)" = "1" ]; then \
-		(sleep 1; $(OPEN) '$(URL)' >/dev/null 2>&1) & \
+	@if command -v browser-sync >/dev/null 2>&1; then \
+		BROWSER_SYNC=browser-sync; \
+	elif command -v npx >/dev/null 2>&1; then \
+		BROWSER_SYNC="npx --yes browser-sync"; \
+	else \
+		BROWSER_SYNC=""; \
+	fi; \
+	if [ -n "$$BROWSER_SYNC" ]; then \
+		if [ "$(OPEN_BROWSER)" = "1" ]; then \
+			OPEN_FLAG=--open; \
+		else \
+			OPEN_FLAG=--no-open; \
+		fi; \
+		$$BROWSER_SYNC start --server $(PUBLIC_DIR) --files "$(PUBLIC_DIR)/**/*" --host $(HOST) --port $(PORT) $$OPEN_FLAG; \
+	else \
+		if [ "$(OPEN_BROWSER)" = "1" ]; then \
+			(sleep 1; $(OPEN) '$(URL)' >/dev/null 2>&1) & \
+		fi; \
+		$(PYTHON) -m http.server $(PORT) --bind $(HOST) --directory $(PUBLIC_DIR); \
 	fi
-	$(PYTHON) -m http.server $(PORT) --bind $(HOST) --directory $(PUBLIC_DIR)

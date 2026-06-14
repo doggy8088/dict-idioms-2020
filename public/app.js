@@ -1,5 +1,5 @@
 const DATA_URL = "dict_idioms_2020_20260324.min.json";
-const MAX_RESULTS = 24;
+const MAX_RESULTS = 50;
 const FAVORITES_KEY = "dict-idioms-favorites";
 const DEFAULT_FAVORITES_TITLE = "我的收藏";
 const FAVORITES_EXPORT_SCHEMA = "dict-idioms-favorites@1";
@@ -19,6 +19,7 @@ const state = {
   idioms: [],
   idiomByName: new Map(),
   query: "",
+  matchMode: "any",
   filter: "all",
   openId: "",
   pronunciationMode: readPronunciationMode(),
@@ -300,29 +301,93 @@ function searchIdioms() {
   if (state.filter === "phrase") items = items.filter(item => item.參考詞語);
   if (state.filter === "story") items = items.filter(item => item.典故說明);
 
-  if (!state.query) return pickOpeningSet(items);
+  const queryPlan = parseQueryPlan(state.query, state.matchMode);
 
-  const tokens = state.query.split(/\s+/).filter(Boolean);
+  if (!queryPlan.terms.length) return pickOpeningSet(items);
+
   return items
-    .map(item => ({ item, score: scoreItem(item, tokens) }))
+    .map(item => ({ item, score: scoreItem(item, queryPlan) }))
     .filter(entry => entry.score > 0)
     .sort((a, b) => b.score - a.score || Number(a.item.編號) - Number(b.item.編號))
     .slice(0, MAX_RESULTS)
     .map(entry => entry.item);
 }
 
-function scoreItem(item, tokens) {
-  let score = 0;
-  for (const token of tokens) {
-    if (!item._search.includes(token)) return 0;
-    if (normalize(item.成語) === token) score += 120;
-    else if (normalize(item.成語).includes(token)) score += 80;
-    if (normalize(item.漢語拼音 || "").includes(token)) score += 36;
-    if (normalize(item.注音 || "").includes(token)) score += 32;
-    if (normalize(joinText(item.釋義)).includes(token)) score += 26;
-    if (normalize(joinText(item["用法說明-例句"])).includes(token)) score += 18;
-    score += Math.max(1, 14 - Math.floor(item._search.indexOf(token) / 160));
+function parseQueryPlan(query, matchMode = "any") {
+  const normalizedQuery = String(query || "").trim();
+  if (!normalizedQuery) return { terms: [], matchAll: true };
+
+  const mode = String(matchMode || "any").trim().toLowerCase();
+  const splitTerms = normalizedQuery
+    .split(/[,\uFF0C\s]+/)
+    .map(term => normalize(term))
+    .filter(Boolean);
+
+  if (mode === "exact" || mode === "prefix" || mode === "suffix") {
+    return {
+      terms: splitTerms,
+      termSet: new Set(splitTerms),
+      matchAll: false,
+      matchMode: mode
+    };
   }
+
+  return {
+    terms: splitTerms,
+    matchAll: false,
+    matchMode: "any"
+  };
+}
+
+function scoreItem(item, queryPlan) {
+  const tokens = queryPlan.terms;
+  if (queryPlan.matchMode === "exact" || queryPlan.matchMode === "prefix" || queryPlan.matchMode === "suffix") {
+    const idiomText = normalize(item.成語);
+    let match = false;
+
+    for (const token of queryPlan.terms) {
+      if (queryPlan.matchMode === "exact" && idiomText === token) match = true;
+      if (queryPlan.matchMode === "prefix" && idiomText.startsWith(token)) match = true;
+      if (queryPlan.matchMode === "suffix" && idiomText.endsWith(token)) match = true;
+      if (match) break;
+    }
+
+    return match ? 1000 : 0;
+  }
+
+  const matchAll = queryPlan.matchAll;
+  let score = 0;
+  let matchedTerms = 0;
+  let anyMatch = false;
+  const idiomText = normalize(item.成語);
+  const pinyinText = normalize(item.漢語拼音 || "");
+  const zhuyinText = normalize(item.注音 || "");
+  const meaningText = normalize(joinText(item.釋義));
+  const usageText = normalize(joinText(item["用法說明-例句"]));
+  const searchText = item._search || "";
+
+  for (const token of tokens) {
+    let tokenScore = 0;
+
+    if (idiomText === token) tokenScore += 120;
+    else if (idiomText.includes(token)) tokenScore += 80;
+
+    if (pinyinText.includes(token)) tokenScore += 36;
+    if (zhuyinText.includes(token)) tokenScore += 32;
+    if (meaningText.includes(token)) tokenScore += 26;
+    if (usageText.includes(token)) tokenScore += 18;
+
+    if (tokenScore > 0 || searchText.includes(token)) {
+      tokenScore += Math.max(1, 14 - Math.floor(searchText.indexOf(token) / 160));
+      score += tokenScore;
+      matchedTerms += 1;
+      anyMatch = true;
+    }
+  }
+
+  if (!anyMatch) return 0;
+  if (matchAll && matchedTerms !== tokens.length) return 0;
+
   if (item._main) score += 8;
   return score;
 }
@@ -1588,10 +1653,12 @@ function applySearchFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const query = params.get("q") || "";
   const filter = params.get("filter") || "all";
+  const matchParam = (params.get("match") || "any").toLowerCase();
   const openId = params.get("id") || "";
 
   els.input.value = query;
   state.query = normalize(query);
+  state.matchMode = ["exact", "prefix", "suffix", "any"].includes(matchParam) ? matchParam : "any";
 
   state.filter = ["all", "main", "phrase", "story"].includes(filter) ? filter : "all";
   els.filters.forEach(item => item.classList.toggle("is-active", item.dataset.filter === state.filter));
@@ -1604,6 +1671,8 @@ function updateLocationFromState(openId, onlyOpenId = false, mode = "replace") {
   const q = els.input.value.trim();
 
   if (q) params.set("q", q);
+  if (state.matchMode && state.matchMode !== "any") params.set("match", state.matchMode);
+  else params.delete("match");
   if (state.filter !== "all") params.set("filter", state.filter);
 
   if (onlyOpenId) {
