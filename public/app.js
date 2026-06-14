@@ -2,6 +2,7 @@ const DATA_URL = "dict_idioms_2020_20260324.min.json";
 const MAX_RESULTS = 40;
 const FAVORITES_KEY = "dict-idioms-favorites";
 const DEFAULT_FAVORITES_TITLE = "我的收藏";
+const DEFAULT_FAVORITE_COLLECTION_ID = "my-favorites";
 const FAVORITES_EXPORT_SCHEMA = "dict-idioms-favorites@1";
 const FAVORITE_DRAG_THRESHOLD = 6;
 const PRONUNCIATION_MODE_KEY = "dict-idioms-pronunciation-mode";
@@ -29,6 +30,8 @@ const state = {
   totalSearchResults: 0,
   dailyItem: null,
   visibleResults: [],
+  favoriteCollections: favoriteSettings.collections,
+  activeFavoriteCollectionId: favoriteSettings.activeCollectionId,
   favoritesTitle: favoriteSettings.title,
   favorites: new Set(favoriteSettings.favorites)
 };
@@ -47,8 +50,8 @@ const els = {
   template: document.querySelector("#idiomTemplate"),
   randomTop: document.querySelector("#randomTop"),
   favoritesTitle: document.querySelector("#favorites-title"),
-  favoritesCount: document.querySelector("#favoritesCount"),
   favoritesList: document.querySelector("#favoritesList"),
+  favoriteCollectionsList: document.querySelector("#favoriteCollectionsList"),
   favoritesStatus: document.querySelector("#favoritesStatus"),
   shareFavorites: document.querySelector("#shareFavorites"),
   clearFavorites: document.querySelector("#clearFavorites"),
@@ -90,6 +93,7 @@ async function init() {
     setDailyCard();
     setQuickPicks();
     renderFavorites();
+    renderFavoriteCollections();
 
     const initialResult = state.query ? searchIdioms() : (shouldShowSharedFavorites ? favoriteItems() : pickOpeningSet());
     renderResults(
@@ -222,10 +226,13 @@ function bindEvents() {
     const shouldClear = window.confirm("確定要清空全部收藏嗎？這個動作無法復原。");
     if (!shouldClear) return;
 
-    state.favorites.clear();
+    applyFavoriteCollectionFavorites([]);
     saveFavorites();
     renderFavorites();
-    renderResults(searchIdioms());
+    renderFavoriteCollections();
+    els.input.value = "";
+    state.query = "";
+    renderFavoritesModeResults();
     setFavoritesStatus("已清空收藏");
   });
 
@@ -476,8 +483,21 @@ function pickOpeningSet(items = state.idioms) {
   return shuffled.slice(0, Math.min(DEFAULT_OPEN_COUNT, shuffled.length));
 }
 
+function fallbackFavoriteResults() {
+  const favorites = [];
+  return pickOpeningSet(state.idioms)
+    .filter(item => item && item.編號)
+    .filter(item => {
+      const key = String(item.編號);
+      if (favorites.includes(key)) return false;
+      favorites.push(key);
+      return true;
+    });
+}
+
 function renderResults(items, options = {}) {
   state.resultsMode = options.mode || (state.query ? "search" : "main");
+  const isFavoritesMode = options.mode === "favorites";
 
   els.results.innerHTML = "";
 
@@ -485,7 +505,23 @@ function renderResults(items, options = {}) {
   const totalResults = isSearchMode ? state.totalSearchResults : items.length;
 
   if (!items.length) {
-    state.visibleResults = [];
+    if (isFavoritesMode) {
+      const fallbackItems = fallbackFavoriteResults();
+
+      if (fallbackItems.length) {
+        const fragment = document.createDocumentFragment();
+        fallbackItems.forEach((item, index) => {
+          fragment.appendChild(createCard(item, index));
+        });
+        els.results.appendChild(fragment);
+        state.visibleResults = [...fallbackItems];
+        scrollToResultsTitle();
+        return;
+      }
+
+      state.visibleResults = [];
+    }
+
     if (isSearchMode) {
       els.resultCount.textContent = "找不到符合的成語";
       els.results.innerHTML = `<p class="empty-state">沒有找到符合條件的成語。可以改用更短的詞，例如「勇敢」、「朋友」或「吝嗇」。</p>`;
@@ -628,7 +664,10 @@ function handleResultsPaginationClick(event) {
   state.currentPage = normalizeCurrentPage(nextPage, state.totalSearchResults);
   renderResults(searchIdioms());
   updateLocationFromState();
+  scrollToResultsTitle();
+}
 
+function scrollToResultsTitle() {
   requestAnimationFrame(() => {
     const resultsTitle = document.querySelector("#results-title");
     if (!resultsTitle) return;
@@ -988,17 +1027,17 @@ function idiomListBlock(title, value) {
 
 function toggleFavorite(item) {
   const key = String(item.編號 || item.成語);
-  if (state.favorites.has(key)) state.favorites.delete(key);
-  else state.favorites.add(key);
+  const keys = new Set(state.favorites);
+
+  if (keys.has(key)) keys.delete(key);
+  else keys.add(key);
+
+  applyFavoriteCollectionFavorites(keys);
   saveFavorites();
   renderFavorites();
 
   if (state.resultsMode === "favorites") {
-    const favorites = favoriteItems();
-    renderResults(favorites, {
-      label: `顯示 ${favorites.length} 筆收藏`,
-      mode: "favorites"
-    });
+    renderFavoritesModeResults();
     return;
   }
 
@@ -1052,11 +1091,56 @@ function renderFavorites() {
 
       els.input.value = "";
       state.query = "";
-      renderResults(favoriteItems(), {
-        label: `顯示 ${saved.length} 筆收藏`,
-        mode: "favorites"
-      });
+      renderFavoritesModeResults();
       openIdiomModal(item, true, "replace");
+    });
+   });
+}
+
+function renderFavoriteCollections() {
+  const collections = [...state.favoriteCollections];
+  if (!els.favoriteCollectionsList) return;
+
+  if (!collections.length) {
+    els.favoriteCollectionsList.innerHTML = `<p class="empty-state">尚未有其他收藏清單。</p>`;
+    return;
+  }
+
+  els.favoriteCollectionsList.innerHTML = collections.map(item => {
+    const id = escapeHtml(item.id);
+    const title = escapeHtml(normalizeFavoriteTitle(item.title || DEFAULT_FAVORITES_TITLE));
+    const isDefault = item.id === DEFAULT_FAVORITE_COLLECTION_ID;
+    const isActive = item.id === state.activeFavoriteCollectionId;
+
+    return `
+      <div class="favorite-list-item ${isActive ? "is-active" : ""}" data-favorite-list-id="${id}">
+        <button class="favorite-item-button" type="button" data-action="open" data-favorite-list-id="${id}">${title}</button>
+        ${isDefault ? "" : `
+          <button class="favorite-remove-button" type="button" data-action="remove" data-favorite-list-id="${id}" aria-label="刪除收藏清單：${title}">
+            <span aria-hidden="true">×</span>
+          </button>
+        `}
+      </div>
+    `;
+  }).join("");
+
+  els.favoriteCollectionsList.querySelectorAll("[data-action]").forEach(button => {
+    button.addEventListener("click", event => {
+      if (suppressFavoriteClick) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
+      const collectionId = button.dataset.favoriteListId || "";
+      if (!collectionId) return;
+
+      if (button.dataset.action === "remove") {
+        removeFavoriteCollectionById(collectionId);
+        return;
+      }
+
+      switchFavoriteCollection(collectionId);
     });
   });
 }
@@ -1067,8 +1151,135 @@ function favoriteItems() {
     .filter(Boolean);
 }
 
-function syncFavoritesCount(count = state.favorites.size) {
+function renderFavoritesModeResults() {
+  const favorites = favoriteItems();
+  if (favorites.length) {
+    renderResults(favorites, {
+      label: `顯示 ${favorites.length} 筆收藏`,
+      mode: "favorites"
+    });
+    return;
+  }
+
+  renderResults(fallbackFavoriteResults(), { mode: "favorites" });
+}
+
+  function syncFavoritesCount(count = state.favorites.size) {
+  if (!els.favoritesCount) return;
   els.favoritesCount.textContent = `${count.toLocaleString("zh-TW")} 筆`;
+}
+
+function getActiveFavoriteCollection() {
+  return getFavoriteCollectionById(state.activeFavoriteCollectionId) || state.favoriteCollections[0];
+}
+
+function getFavoriteCollectionById(collectionId) {
+  return state.favoriteCollections.find(item => item.id === collectionId) || null;
+}
+
+function applyFavoriteCollectionFavorites(keys) {
+  const activeCollection = getActiveFavoriteCollection();
+  if (!activeCollection) return;
+
+  const inputKeys = keys ? (Array.isArray(keys) ? keys : [...keys]) : [];
+  activeCollection.favorites = [...new Set(normalizeStoredFavoriteKeys(inputKeys))];
+  state.favorites = new Set(activeCollection.favorites);
+}
+
+function switchFavoriteCollection(collectionId) {
+  const target = getFavoriteCollectionById(collectionId);
+  if (!target) return;
+
+  state.activeFavoriteCollectionId = target.id;
+  state.favoritesTitle = target.title;
+  state.favorites = new Set(target.favorites);
+  state.currentPage = 1;
+  state.query = "";
+  els.input.value = "";
+
+  syncFavoritesTitle();
+  renderFavorites();
+  renderFavoriteCollections();
+  syncFavoritesCount();
+  renderFavoritesModeResults();
+  scrollToResultsTitle();
+  saveFavorites();
+}
+
+function removeFavoriteCollectionById(collectionId) {
+  if (collectionId === DEFAULT_FAVORITE_COLLECTION_ID) return;
+
+  const index = state.favoriteCollections.findIndex(item => item.id === collectionId);
+  if (index === -1) return;
+
+  const removedTitle = normalizeFavoriteTitle(state.favoriteCollections[index]?.title || DEFAULT_FAVORITES_TITLE);
+  state.favoriteCollections.splice(index, 1);
+  if (removedTitle) setFavoritesStatus(`已刪除收藏清單「${removedTitle}」`);
+
+  if (state.activeFavoriteCollectionId === collectionId) {
+    state.activeFavoriteCollectionId = DEFAULT_FAVORITE_COLLECTION_ID;
+    const active = getActiveFavoriteCollection();
+    state.favorites = new Set(active ? active.favorites : []);
+    state.favoritesTitle = active ? active.title : DEFAULT_FAVORITES_TITLE;
+    syncFavoritesTitle();
+    renderFavorites();
+    syncFavoritesCount();
+    state.query = "";
+    els.input.value = "";
+    renderFavoritesModeResults();
+    scrollToResultsTitle();
+  }
+
+  renderFavoriteCollections();
+  saveFavorites();
+}
+
+function addFavoriteCollection(rawCollection) {
+  const normalized = normalizeFavoriteCollection(rawCollection, state.favoriteCollections.length);
+  if (!normalized) return null;
+
+  const duplicateCollection = state.favoriteCollections.find(item => isSameFavoriteCollectionContent(item.favorites, normalized.favorites));
+  if (duplicateCollection) {
+    return duplicateCollection.id;
+  }
+
+  let collectionId = normalized.id;
+  if (state.favoriteCollections.some(item => item.id === collectionId)) {
+    collectionId = `${collectionId}-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+  }
+
+  normalized.id = collectionId;
+  state.favoriteCollections.push(normalized);
+  return normalized.id;
+}
+
+function isSameFavoriteCollectionContent(leftFavorites, rightFavorites) {
+  const left = normalizeStoredFavoriteKeys(leftFavorites).sort();
+  const right = normalizeStoredFavoriteKeys(rightFavorites).sort();
+
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
+}
+
+function normalizeFavoriteCollection(rawCollection, fallbackIndex) {
+  if (!rawCollection || typeof rawCollection !== "object") return null;
+
+  const id = String(rawCollection.id || "").trim() || `collection-${Date.now()}-${fallbackIndex}-${Math.random().toString(36).slice(2, 8)}`;
+  const title = normalizeFavoriteTitle(
+    rawCollection.title
+      ? String(rawCollection.title)
+      : DEFAULT_FAVORITES_TITLE
+  );
+  const favorites = normalizeStoredFavoriteKeys(rawCollection.favorites || []);
+
+  return {
+    id,
+    title,
+    favorites
+  };
 }
 
 function removeFavoriteWithEffect(item, button) {
@@ -1141,7 +1352,7 @@ function collapseFavoriteListItem(listItem, height) {
 }
 
 function removeFavoriteItem(item) {
-  state.favorites.delete(String(item.編號 || item.成語));
+  applyFavoriteCollectionFavorites([...state.favorites].filter(value => value !== String(item.編號 || item.成語)));
   saveFavorites();
   renderFavorites();
   renderResults(searchIdioms());
@@ -1454,7 +1665,7 @@ function finishFavoriteReorder(drag) {
     return;
   }
 
-  state.favorites = new Set(favoriteKeys);
+  applyFavoriteCollectionFavorites(favoriteKeys);
   saveFavorites();
   renderFavorites();
   setFavoritesStatus("已更新收藏順序");
@@ -1609,10 +1820,13 @@ function commitFavoriteTitleEdit() {
   const nextTitle = normalizeFavoriteTitle(els.favoritesTitle.textContent);
   const changed = nextTitle !== state.favoritesTitle;
 
+  const activeCollection = getActiveFavoriteCollection();
+  if (activeCollection) activeCollection.title = nextTitle;
   state.favoritesTitle = nextTitle;
   endFavoriteTitleEdit();
   syncFavoritesTitle();
   saveFavorites();
+  renderFavoriteCollections();
 
   if (changed) setFavoritesStatus("已更新收藏標題");
 }
@@ -1626,6 +1840,7 @@ function cancelFavoriteTitleEdit() {
 function endFavoriteTitleEdit() {
   els.favoritesTitle.removeAttribute("contenteditable");
   els.favoritesTitle.classList.remove("is-editing");
+  els.favoritesTitle.blur();
   window.getSelection()?.removeAllRanges();
 }
 
@@ -1684,14 +1899,21 @@ function applyFavoritesFromFragment() {
   const imported = parseFavoritesShareFragment(window.location.hash);
   if (!imported) return null;
 
-  if (imported.title !== null) state.favoritesTitle = imported.title;
-  state.favorites = new Set(imported.favorites);
-  saveFavorites();
-  syncFavoritesTitle();
+  const collectionId = addFavoriteCollection({
+    title: imported.title || `收藏清單 ${formatDateForFile(new Date())}`,
+    favorites: imported.favorites
+  });
+
+  if (!collectionId) return null;
+  switchFavoriteCollection(collectionId);
+  renderFavoriteCollections();
 
   const ignored = imported.ignoredCount ? `，略過 ${imported.ignoredCount} 筆無法辨識資料` : "";
   setFavoritesStatus(`已載入分享收藏 ${imported.favorites.length} 筆${ignored}`);
-  return imported;
+  return {
+    collectionId,
+    imported
+  };
 }
 
 function parseFavoritesShareFragment(hash) {
@@ -1770,12 +1992,19 @@ async function importFavoritesFromFile(file) {
     const payload = JSON.parse(await file.text());
     const imported = parseFavoritesImport(payload);
 
-    if (imported.title !== null) state.favoritesTitle = imported.title;
-    state.favorites = new Set(imported.favorites);
+    const activeCollection = getActiveFavoriteCollection();
+    if (!activeCollection) return;
+
+    if (imported.title !== null) activeCollection.title = imported.title;
+    applyFavoriteCollectionFavorites(imported.favorites);
+    state.favoritesTitle = activeCollection.title;
     saveFavorites();
     syncFavoritesTitle();
     renderFavorites();
-    renderResults(searchIdioms());
+    renderFavoriteCollections();
+    els.input.value = "";
+    state.query = "";
+    renderFavoritesModeResults();
 
     const ignored = imported.ignoredCount ? `，略過 ${imported.ignoredCount} 筆無法辨識資料` : "";
     setFavoritesStatus(`已匯入 ${imported.favorites.length} 筆收藏${ignored}`);
@@ -2063,6 +2292,7 @@ function closeIdiomModal() {
 function syncFromLocation() {
   applySearchFromUrl();
   const sharedImport = applyFavoritesFromFragment();
+  renderFavoriteCollections();
   const shouldShowSharedFavorites = Boolean(sharedImport);
   const nextResult = state.query ? searchIdioms() : (shouldShowSharedFavorites ? favoriteItems() : pickOpeningSet());
 
@@ -2351,9 +2581,17 @@ function shuffle(items) {
 }
 
 function readFavoritesSettings() {
-  const fallback = {
+  const fallbackCollections = [{
+    id: DEFAULT_FAVORITE_COLLECTION_ID,
     title: DEFAULT_FAVORITES_TITLE,
     favorites: []
+  }];
+
+  const fallback = {
+    collections: fallbackCollections,
+    activeCollectionId: DEFAULT_FAVORITE_COLLECTION_ID,
+    favorites: fallbackCollections[0].favorites,
+    title: fallbackCollections[0].title
   };
 
   try {
@@ -2361,21 +2599,53 @@ function readFavoritesSettings() {
     if (!raw) return fallback;
 
     const payload = JSON.parse(raw);
+    let collections = [];
+
     if (Array.isArray(payload)) {
-      return {
-        title: DEFAULT_FAVORITES_TITLE,
-        favorites: normalizeStoredFavoriteKeys(payload)
-      };
+      collections = [
+        normalizeFavoriteCollection({
+          id: DEFAULT_FAVORITE_COLLECTION_ID,
+          title: DEFAULT_FAVORITES_TITLE,
+          favorites: payload
+        }, 0)
+      ];
+    } else if (payload && typeof payload === "object" && Array.isArray(payload.collections)) {
+      collections = payload.collections
+        .map((item, index) => normalizeFavoriteCollection(item, index))
+        .filter(Boolean);
+
+      if (!collections.some(item => item.id === DEFAULT_FAVORITE_COLLECTION_ID)) {
+        collections.unshift(normalizeFavoriteCollection({
+          id: DEFAULT_FAVORITE_COLLECTION_ID,
+          title: payload.title,
+          favorites: payload.favorites || payload.items
+        }, 0));
+      }
+
+      if (!collections.length) {
+        collections = fallbackCollections.map(item => ({ ...item }));
+      }
+    } else if (payload && typeof payload === "object") {
+      collections = [
+        normalizeFavoriteCollection({
+          id: DEFAULT_FAVORITE_COLLECTION_ID,
+          title: payload.title,
+          favorites: payload.favorites || payload.items
+        }, 0)
+      ];
+    } else {
+      return fallback;
     }
 
-    if (payload && typeof payload === "object") {
-      return {
-        title: normalizeFavoriteTitle(payload.title),
-        favorites: normalizeStoredFavoriteKeys(payload.favorites || payload.items || [])
-      };
-    }
+    const activeCollectionId = validateFavoriteCollectionId(payload?.activeCollectionId || "", collections);
+    const activeCollection = getFavoriteCollectionByIdFromList(activeCollectionId, collections) || collections[0];
 
-    return fallback;
+    return {
+      collections,
+      activeCollectionId: activeCollection.id,
+      favorites: activeCollection.favorites,
+      title: activeCollection.title
+    };
   } catch {
     return fallback;
   }
@@ -2384,10 +2654,19 @@ function readFavoritesSettings() {
 function saveFavorites() {
   try {
     localStorage.setItem(FAVORITES_KEY, JSON.stringify({
-      title: state.favoritesTitle,
-      favorites: [...state.favorites]
+      collections: state.favoriteCollections,
+      activeCollectionId: state.activeFavoriteCollectionId
     }));
   } catch {}
+}
+
+function getFavoriteCollectionByIdFromList(collectionId, collections) {
+  return collections.find(item => item.id === collectionId) || null;
+}
+
+function validateFavoriteCollectionId(collectionId, collections) {
+  if (getFavoriteCollectionByIdFromList(collectionId, collections)) return collectionId;
+  return collections.find(item => item.id === DEFAULT_FAVORITE_COLLECTION_ID)?.id || collections[0]?.id || DEFAULT_FAVORITE_COLLECTION_ID;
 }
 
 function normalizeFavoriteTitle(value) {

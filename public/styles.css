@@ -240,7 +240,7 @@ h3 {
 
 h1 {
   max-width: 760px;
-  font-size: clamp(2.9rem, 8vw, 7.2rem);
+  font-size: clamp(2.7rem, 5.8vw, 7.2rem);
   letter-spacing: -0.09em;
   text-wrap: balance;
 }
