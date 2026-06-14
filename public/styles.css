@@ -595,7 +595,7 @@ input:focus-visible,
   gap: 0.62rem;
   position: relative;
   cursor: grab;
-  touch-action: none;
+  touch-action: pan-y;
   user-select: none;
   transition: opacity 160ms var(--ease-ui), transform 160ms var(--ease-ui);
 }

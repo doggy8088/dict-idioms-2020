@@ -5,6 +5,7 @@ const DEFAULT_FAVORITES_TITLE = "我的收藏";
 const DEFAULT_FAVORITE_COLLECTION_ID = "my-favorites";
 const FAVORITES_EXPORT_SCHEMA = "dict-idioms-favorites@1";
 const FAVORITE_DRAG_THRESHOLD = 6;
+const FAVORITE_LONG_PRESS_DELAY = 420;
 const PRONUNCIATION_MODE_KEY = "dict-idioms-pronunciation-mode";
 const DEFAULT_OPEN_COUNT = 6;
 const IME_COMPOSITION_TOLERANCE_MS = 300;
@@ -72,6 +73,7 @@ let suppressFavoriteClick = false;
 let isQueryInputComposing = false;
 let lastQueryCompositionEnd = 0;
 let favoriteTitleEditContext = null;
+let favoriteLongPressTimer = 0;
 const shareFeedbackTimers = new WeakMap();
 
 init();
@@ -1608,24 +1610,57 @@ function handleFavoritePointerDown(event) {
   const favoriteId = item.dataset.favoriteId || "";
   if (!favoriteId) return;
 
-	  favoritePointerDrag = {
-	    id: favoriteId,
-	    pointerId: getFavoritePointerId(event),
-	    source: item,
-	    sourceIndex: [...state.favorites].indexOf(favoriteId),
-	    startX: event.clientX,
-	    startY: event.clientY,
+  const isTouchDrag = isTouchLikeFavoriteDrag(event);
+  const pointerId = getFavoritePointerId(event);
+  favoritePointerDrag = {
+    id: favoriteId,
+    pointerId,
+    source: item,
+    sourceIndex: [...state.favorites].indexOf(favoriteId),
+    startX: event.clientX,
+    startY: event.clientY,
     targetId: "",
     placeAfterTarget: false,
     isDragging: false,
+    isLongPressEnabled: isTouchDrag,
+    isLongPressReady: true,
     preview: null,
     offsetX: 0,
     offsetY: 0
   };
+
+  if (isTouchDrag) {
+    clearFavoriteLongPressTimer();
+    favoriteLongPressTimer = window.setTimeout(() => {
+      if (!favoritePointerDrag || favoritePointerDrag.pointerId !== pointerId || !favoritePointerDrag.isLongPressReady) return;
+      favoritePointerDrag.isDragging = true;
+      favoritePointerDrag.isLongPressEnabled = false;
+      favoritePointerDrag.sourceIndex = [...state.favorites].indexOf(favoriteId);
+      favoritePointerDrag.source.classList.add("is-dragging");
+      createFavoriteDragPreview(favoritePointerDrag, event);
+      suppressFavoriteClick = true;
+    }, FAVORITE_LONG_PRESS_DELAY);
+    return;
+  }
+
+  favoritePointerDrag.isLongPressEnabled = false;
+  favoritePointerDrag.isLongPressReady = false;
 }
 
 function handleFavoritePointerMove(event) {
   if (!favoritePointerDrag || favoritePointerDrag.pointerId !== getFavoritePointerId(event)) return;
+
+  if (favoritePointerDrag.isLongPressEnabled) {
+    const deltaX = event.clientX - favoritePointerDrag.startX;
+    const deltaY = event.clientY - favoritePointerDrag.startY;
+    const distance = Math.hypot(deltaX, deltaY);
+    if (distance > FAVORITE_DRAG_THRESHOLD) {
+      favoritePointerDrag.isLongPressReady = false;
+      clearFavoriteLongPressTimer();
+      return;
+    }
+    return;
+  }
 
   const deltaX = event.clientX - favoritePointerDrag.startX;
   const deltaY = event.clientY - favoritePointerDrag.startY;
@@ -1662,6 +1697,7 @@ function handleFavoritePointerMove(event) {
 
 function handleFavoritePointerUp(event) {
   if (!favoritePointerDrag || favoritePointerDrag.pointerId !== getFavoritePointerId(event)) return;
+  clearFavoriteLongPressTimer();
 
   const drag = favoritePointerDrag;
   const shouldReorder = drag.isDragging && drag.targetId;
@@ -1681,6 +1717,7 @@ function handleFavoritePointerUp(event) {
 
 function cancelFavoritePointerDrag() {
   const drag = favoritePointerDrag;
+  clearFavoriteLongPressTimer();
   const wasDragging = drag?.isDragging;
   favoritePointerDrag = null;
   clearFavoriteDragState(drag);
@@ -1694,6 +1731,18 @@ function cancelFavoritePointerDrag() {
 
 function getFavoritePointerId(event) {
   return event.pointerId ?? "mouse";
+}
+
+function isTouchLikeFavoriteDrag(event) {
+  if (event.pointerType === "touch") return true;
+  return window.matchMedia("(pointer: coarse)").matches && window.matchMedia("(max-width: 767px)").matches;
+}
+
+function clearFavoriteLongPressTimer() {
+  if (favoriteLongPressTimer) {
+    window.clearTimeout(favoriteLongPressTimer);
+    favoriteLongPressTimer = 0;
+  }
 }
 
 function createFavoriteDragPreview(drag, event) {
