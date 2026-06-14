@@ -816,11 +816,12 @@ function handleFavoritePointerUp(event) {
     suppressFavoriteClick = true;
   }
 
-  cancelFavoritePointerDrag();
-
   if (shouldReorder) {
-    reorderFavorite(drag.id, drag.targetId, drag.placeAfterTarget);
+    finishFavoriteReorder(drag);
+    return;
   }
+
+  cancelFavoritePointerDrag();
 }
 
 function cancelFavoritePointerDrag() {
@@ -925,6 +926,40 @@ function clearFavoriteDragState(drag = null) {
   });
 }
 
+function finishFavoriteReorder(drag) {
+  const destinationRect = getFavoriteDropDestinationRect(drag);
+  favoritePointerDrag = null;
+  clearFavoriteDropMarkers();
+
+  window.setTimeout(() => {
+    suppressFavoriteClick = false;
+  }, 0);
+
+  animateFavoriteDrop(drag, destinationRect).then(() => {
+    reorderFavorite(drag.id, drag.targetId, drag.placeAfterTarget);
+  });
+}
+
+function getFavoriteDropDestinationRect(drag) {
+  const items = [...els.favoritesList.querySelectorAll(".favorite-list-item")];
+  const favoriteKeys = [...state.favorites];
+  const sourceIndex = favoriteKeys.indexOf(drag.id);
+  const targetIndex = favoriteKeys.indexOf(drag.targetId);
+
+  if (sourceIndex === -1 || targetIndex === -1) {
+    return drag.source.getBoundingClientRect();
+  }
+
+  const nextKeys = favoriteKeys.filter(key => key !== drag.id);
+  let insertIndex = nextKeys.indexOf(drag.targetId);
+  if (drag.placeAfterTarget) insertIndex += 1;
+
+  const destinationKey = favoriteKeys[Math.min(insertIndex, favoriteKeys.length - 1)];
+  const destinationItem = items.find(item => item.dataset.favoriteId === destinationKey);
+
+  return (destinationItem || drag.source).getBoundingClientRect();
+}
+
 function reorderFavorite(sourceId, targetId, placeAfterTarget) {
   const favoriteKeys = [...state.favorites];
   const sourceIndex = favoriteKeys.indexOf(sourceId);
@@ -941,6 +976,46 @@ function reorderFavorite(sourceId, targetId, placeAfterTarget) {
   saveFavorites();
   renderFavorites();
   setFavoritesStatus("已更新收藏順序");
+}
+
+function animateFavoriteDrop(drag, destinationRect) {
+  if (!drag?.preview || !destinationRect || !("animate" in Element.prototype)) {
+    clearFavoriteDragState(drag);
+    return Promise.resolve();
+  }
+
+  const previewRect = drag.preview.getBoundingClientRect();
+  drag.preview.style.transform = `translate3d(${Math.round(previewRect.left)}px, ${Math.round(previewRect.top)}px, 0)`;
+  drag.preview.style.width = `${destinationRect.width}px`;
+  drag.preview.style.height = `${destinationRect.height}px`;
+  drag.preview.dataset.previewIndex = String(getFavoritePreviewIndex(drag));
+
+  const animation = drag.preview.animate(
+    [
+      {
+        transform: `translate3d(${Math.round(previewRect.left)}px, ${Math.round(previewRect.top)}px, 0)`,
+        opacity: 0.98
+      },
+      {
+        transform: `translate3d(${Math.round(destinationRect.left)}px, ${Math.round(destinationRect.top)}px, 0)`,
+        opacity: 1
+      }
+    ],
+    {
+      duration: 260,
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)"
+    }
+  );
+
+  return animation.finished
+    .catch(() => {})
+    .then(() => {
+      drag.preview?.remove();
+      drag.source?.classList.remove("is-dragging");
+    })
+    .finally(() => {
+      clearFavoriteDragState(drag);
+    });
 }
 
 function syncFavoritesTitle() {
