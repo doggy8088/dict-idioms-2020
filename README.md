@@ -142,7 +142,8 @@
 
 ## 下載原始資料（官方）
 
-1. 前往官方下載頁：`https://language.moe.gov.tw/001/Upload/Files/site_content/M0001/respub/dict_idiomsdict_download.html`
+1. 前往官方[下載頁](https://language.moe.gov.tw/001/Upload/Files/sit
+e_content/M0001/respub/dict_idiomsdict_download.html)
 2. 下載對應的原始檔案（例如 `dict_idioms_2020_20260324.json` 及關聯檔案）。
 3. 將原始檔放回本專案 `downloads/` 資料夾，供後續比對與版本更新。
 4. 若要更新最終使用資料，請依實際流程轉換並更新 `public/` 目錄對應檔案。
