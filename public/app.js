@@ -83,15 +83,24 @@ async function init() {
     state.idioms = Array.isArray(payload) ? payload : payload.idioms || [];
     state.idioms = state.idioms.map(prepareIdiom);
     state.idiomByName = new Map(state.idioms.map(item => [String(item.成語 || "").trim(), item]).filter(([name]) => name));
-    applyFavoritesFromFragment();
+    const sharedImport = applyFavoritesFromFragment();
+    const shouldShowSharedFavorites = Boolean(sharedImport);
 
     els.dataStatus.textContent = `已載入 ${state.idioms.length.toLocaleString("zh-TW")} 筆成語`;
     setDailyCard();
     setQuickPicks();
     renderFavorites();
 
-    const initialResult = state.query ? searchIdioms() : pickOpeningSet();
-    renderResults(initialResult);
+    const initialResult = state.query ? searchIdioms() : (shouldShowSharedFavorites ? favoriteItems() : pickOpeningSet());
+    renderResults(
+      initialResult,
+      shouldShowSharedFavorites
+        ? {
+            label: `顯示 ${initialResult.length} 筆收藏`,
+            mode: "favorites"
+          }
+        : {}
+    );
 
     if (state.openId) {
       const target = findIdiomByIdentifier(state.openId);
@@ -1673,7 +1682,7 @@ function buildFavoritesShareFragment() {
 
 function applyFavoritesFromFragment() {
   const imported = parseFavoritesShareFragment(window.location.hash);
-  if (!imported) return;
+  if (!imported) return null;
 
   if (imported.title !== null) state.favoritesTitle = imported.title;
   state.favorites = new Set(imported.favorites);
@@ -1682,6 +1691,7 @@ function applyFavoritesFromFragment() {
 
   const ignored = imported.ignoredCount ? `，略過 ${imported.ignoredCount} 筆無法辨識資料` : "";
   setFavoritesStatus(`已載入分享收藏 ${imported.favorites.length} 筆${ignored}`);
+  return imported;
 }
 
 function parseFavoritesShareFragment(hash) {
@@ -2052,7 +2062,19 @@ function closeIdiomModal() {
 
 function syncFromLocation() {
   applySearchFromUrl();
-  renderResults(state.query ? searchIdioms() : pickOpeningSet());
+  const sharedImport = applyFavoritesFromFragment();
+  const shouldShowSharedFavorites = Boolean(sharedImport);
+  const nextResult = state.query ? searchIdioms() : (shouldShowSharedFavorites ? favoriteItems() : pickOpeningSet());
+
+  renderResults(
+    nextResult,
+    shouldShowSharedFavorites
+      ? {
+          label: `顯示 ${nextResult.length} 筆收藏`,
+          mode: "favorites"
+        }
+      : {}
+  );
 
   if (!state.openId) {
     hideIdiomModal();
