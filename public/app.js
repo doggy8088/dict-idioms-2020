@@ -224,7 +224,9 @@ function bindEvents() {
     const collectionId = createFavoriteCollectionForEditing({
       title: DEFAULT_FAVORITES_TITLE,
       favorites: []
-    }, {}, false);
+    }, {
+      skipScrollToResults: true
+    }, false);
 
     if (!collectionId) return;
 
@@ -232,7 +234,8 @@ function bindEvents() {
       clearTitleInput: true,
       isNewCollectionDraft: true,
       newCollectionId: collectionId,
-      draftAction: "new"
+      draftAction: "new",
+      focusFavoritesTitle: true
     });
     setFavoritesStatus("已新增空白收藏清單");
   });
@@ -245,7 +248,9 @@ function bindEvents() {
     const collectionId = createFavoriteCollectionForEditing({
       title: baseTitle,
       favorites: [...activeCollection.favorites]
-    }, {}, false);
+    }, {
+      skipScrollToResults: true
+    }, false);
 
     if (!collectionId) return;
 
@@ -253,7 +258,8 @@ function bindEvents() {
       isNewCollectionDraft: true,
       newCollectionId: collectionId,
       draftBaseTitle: baseTitle,
-      draftAction: "duplicate"
+      draftAction: "duplicate",
+      focusFavoritesTitle: true
     });
     setFavoritesStatus("已建立收藏清單複本");
   });
@@ -1221,9 +1227,10 @@ function applyFavoriteCollectionFavorites(keys) {
   state.favorites = new Set(activeCollection.favorites);
 }
 
-function switchFavoriteCollection(collectionId) {
+function switchFavoriteCollection(collectionId, options = {}) {
   const target = getFavoriteCollectionById(collectionId);
   if (!target) return;
+  const shouldScrollToResults = options.shouldScrollToResults !== false;
 
   state.activeFavoriteCollectionId = target.id;
   state.favoritesTitle = target.title;
@@ -1237,7 +1244,9 @@ function switchFavoriteCollection(collectionId) {
   renderFavoriteCollections();
   syncFavoritesCount();
   renderFavoritesModeResults();
-  scrollToResultsTitle();
+  if (shouldScrollToResults) {
+    scrollToResultsTitle();
+  }
   saveFavorites();
 }
 
@@ -1302,7 +1311,9 @@ function createFavoriteCollectionForEditing(rawCollection, editOptions = {}, aut
   const collectionId = addFavoriteCollection(rawCollection);
   if (!collectionId) return null;
 
-  switchFavoriteCollection(collectionId);
+  switchFavoriteCollection(collectionId, {
+    shouldScrollToResults: !Boolean(editOptions.skipScrollToResults)
+  });
   if (autoStartEditing) {
     startFavoriteTitleEdit(editOptions);
   }
@@ -1930,6 +1941,7 @@ function startFavoriteTitleEdit(options = {}) {
 
   const shouldClearTitleInput = Boolean(options.clearTitleInput);
   const isNewCollectionDraft = Boolean(options.isNewCollectionDraft);
+  const shouldFocusFavoritesTitle = Boolean(options.focusFavoritesTitle);
   favoriteTitleBeforeEdit = shouldClearTitleInput ? "" : state.favoritesTitle;
   favoriteTitleEditContext = {
     ...options,
@@ -1939,11 +1951,25 @@ function startFavoriteTitleEdit(options = {}) {
   if (shouldClearTitleInput) {
     els.favoritesTitle.textContent = "";
   }
+  if (shouldFocusFavoritesTitle) {
+    scrollToFavoritesTitleInput();
+  }
   els.favoritesTitle.setAttribute("contenteditable", "true");
   els.favoritesTitle.classList.add("is-editing");
-  els.favoritesTitle.focus();
+  try {
+    els.favoritesTitle.focus({ preventScroll: true });
+  } catch {
+    els.favoritesTitle.focus();
+  }
   if (!shouldClearTitleInput) {
     selectElementText(els.favoritesTitle);
+  }
+}
+
+function scrollToFavoritesTitleInput() {
+  if (!(els.favoritesTitle instanceof Element)) return;
+  if (typeof els.favoritesTitle.scrollIntoView === "function") {
+    els.favoritesTitle.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 }
 
@@ -2042,6 +2068,8 @@ async function shareFavoritesLink() {
   triggerShareButtonFeedback(els.shareFavorites);
 
   const url = buildFavoritesShareUrl();
+  const favoriteTitle = normalizeFavoriteTitle(state.favoritesTitle);
+  const shareText = `我在《成語星球》分享了一個「${favoriteTitle}」的精選成語給你`;
 
   if (!state.favorites.size) {
     setFavoritesStatus("目前沒有可分享的收藏");
@@ -2052,7 +2080,7 @@ async function shareFavoritesLink() {
     const shareResult = await shareUrlToClipboardOrNative(url, {
       button: els.shareFavorites,
       title: `成語收藏 ${state.favoritesTitle}`,
-      text: `收藏清單「${state.favoritesTitle}」共 ${state.favorites.size} 筆成語`
+      text: shareText
     });
 
     if (shareResult === "share") {
