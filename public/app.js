@@ -1,5 +1,5 @@
 const DATA_URL = "dict_idioms_2020_20260324.min.json";
-const MAX_RESULTS = 50;
+const MAX_RESULTS = 40;
 const FAVORITES_KEY = "dict-idioms-favorites";
 const DEFAULT_FAVORITES_TITLE = "我的收藏";
 const FAVORITES_EXPORT_SCHEMA = "dict-idioms-favorites@1";
