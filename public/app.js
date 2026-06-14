@@ -999,8 +999,21 @@ function handleQuizAnswer(event) {
 }
 
 function renderEvidenceItem(item) {
-  const match = String(item || "").match(/^(\d\d\.)\s*(.*)$/);
-  if (!match) return `<li>${renderLinkedText(item)}</li>`;
+  const text = String(item || "").trim();
+  const sectionPrefixMatch = text.match(/^([（(][一二三四五六七八九十]+[）)])\s*(.*)$/);
+  if (sectionPrefixMatch) {
+    const heading = `<li class="evidence-subheading">${escapeHtml(sectionPrefixMatch[1])}</li>`;
+    const remainingText = sectionPrefixMatch[2].trim();
+    return remainingText ? `${heading}${renderEvidenceItem(remainingText)}` : heading;
+  }
+
+  const sectionMatch = text.match(/^[（(][一二三四五六七八九十]+[）)]$/);
+  if (sectionMatch) {
+    return `<li class="evidence-subheading">${escapeHtml(sectionMatch[0])}</li>`;
+  }
+
+  const match = text.match(/^(\d\d\.)\s*(.*)$/);
+  if (!match) return `<li>${renderLinkedText(text)}</li>`;
 
   return `
     <li class="evidence-item">

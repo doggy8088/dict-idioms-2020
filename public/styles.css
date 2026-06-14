@@ -1633,6 +1633,16 @@ input:focus-visible,
   line-height: 2.05;
 }
 
+.evidence-subheading {
+  margin: 0;
+  padding: 0 0.1rem 0.2rem;
+  border: 0;
+  background: none;
+  color: var(--moss);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .example-highlight,
 .related-idiom-link.is-highlighted {
   padding: 0.05em 0.22em;
