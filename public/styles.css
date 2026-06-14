@@ -548,7 +548,7 @@ input:focus-visible,
 
 .favorites-toolbar {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 14px;
 }
@@ -557,8 +557,13 @@ input:focus-visible,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   min-height: 38px;
   padding-inline: 0.52rem;
+}
+
+.is-share-feedback {
+  animation: share-flash 620ms var(--ease-ui);
 }
 
 .favorites-status {
@@ -1862,6 +1867,21 @@ input:focus-visible,
   100% {
     opacity: 0;
     transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.15);
+  }
+}
+
+@keyframes share-flash {
+  0% {
+    border-color: rgba(169, 54, 40, 0.22);
+    box-shadow: 0 0 0 0 rgba(216, 138, 41, 0.26);
+  }
+  45% {
+    border-color: rgba(216, 138, 41, 0.98);
+    box-shadow: 0 0 0 3px rgba(216, 138, 41, 0.26), 0 0 0 8px rgba(216, 138, 41, 0.12);
+  }
+  100% {
+    border-color: rgba(169, 54, 40, 0.22);
+    box-shadow: 0 0 0 0 rgba(216, 138, 41, 0);
   }
 }
 
