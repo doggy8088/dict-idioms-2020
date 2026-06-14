@@ -1043,7 +1043,7 @@ input:focus-visible,
 
 .pronunciation__syllable {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: center;
   min-width: 2.15em;
   padding: 0.18rem 0.38rem;
@@ -1055,8 +1055,18 @@ input:focus-visible,
     linear-gradient(135deg, rgba(49, 93, 115, 0.28), rgba(255, 255, 255, 0.45)) border-box;
   font-size: 0.92rem;
   font-weight: 500;
-  line-height: 1.38;
+  line-height: 1.2;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.62) inset;
+}
+
+.pronunciation__syllable sup {
+  position: relative;
+  top: -0.23em;
+  left: 0.02em;
+  vertical-align: baseline;
+  font-size: 0.68em;
+  line-height: 1;
+  margin: 0;
 }
 
 .pronunciation:disabled {

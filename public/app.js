@@ -2518,16 +2518,34 @@ function renderPronunciationSyllables(value, options = {}) {
   const groups = splitPronunciationGroups(value);
   const visibleGroups = options.primaryOnly ? groups.slice(0, 1) : groups;
   const hasVariants = !options.primaryOnly && (groups.length > 1 || groups.some(group => group.label));
+  const shouldRenderToneAsSup = options.renderToneAsSup || isBopomofoText(value);
 
   return visibleGroups.map((group, index) => {
     const syllables = group.syllables
-      .map(syllable => `<span class="pronunciation__syllable">${escapeHtml(syllable)}</span>`)
+      .map(syllable => `<span class="pronunciation__syllable">${renderPronunciationSyllable(syllable, shouldRenderToneAsSup)}</span>`)
       .join("");
     const labelText = options.primaryOnly ? "" : pronunciationGroupLabel(group.label, index, hasVariants);
     const label = labelText ? `<span class="pronunciation__variant-label">${escapeHtml(labelText)}</span>` : "";
 
     return `<span class="pronunciation__group">${label}${syllables}</span>`;
   }).join("");
+}
+
+function isBopomofoText(value) {
+  return /[\u3100-\u312F\u31A0-\u31BA]/.test(String(value || ""));
+}
+
+function renderPronunciationSyllable(syllable, shouldRenderToneAsSup) {
+  if (!shouldRenderToneAsSup) return escapeHtml(syllable);
+  const toneRegex = /[\u02C9\u02CA\u02C7\u02CB\u02D9\u00B7]/;
+
+  return String(syllable || "")
+    .split("")
+    .map(char => {
+      if (toneRegex.test(char)) return `<sup>${escapeHtml(char)}</sup>`;
+      return escapeHtml(char);
+    })
+    .join("");
 }
 
 function pronunciationGroupLabel(label, index, hasVariants) {
@@ -2570,7 +2588,7 @@ function renderPronunciationButton(button) {
 
   button.classList.toggle("is-zhuyin", mode === "zhuyin");
   button.classList.toggle("is-pinyin", mode === "pinyin");
-  button.innerHTML = renderPronunciationSyllables(text, { primaryOnly: data.primaryOnly });
+  button.innerHTML = renderPronunciationSyllables(text, { primaryOnly: data.primaryOnly, renderToneAsSup: mode === "zhuyin" });
   button.disabled = !data.hasBoth;
   button.setAttribute("aria-label", data.hasBoth ? `${label}，點擊切換${mode === "zhuyin" ? "拼音" : "注音"}` : label);
 }
