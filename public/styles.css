@@ -290,6 +290,7 @@ h1 {
 .favorite-button:hover,
 .link-button:hover,
 .mini-list button:hover,
+.favorite-drag-preview button:hover,
 .pronunciation:hover {
   transform: translateY(-3px);
 }
@@ -458,7 +459,8 @@ input:focus-visible,
 .quick-picks button,
 .favorite-button,
 .link-button,
-.mini-list button {
+.mini-list button,
+.favorite-drag-preview button {
   border: 1px solid transparent;
   color: var(--ink);
   background:
@@ -572,7 +574,8 @@ input:focus-visible,
   margin-top: 12px;
 }
 
-.mini-list button {
+.mini-list button,
+.favorite-drag-preview button {
   width: 100%;
   padding: 0.72rem 0.82rem;
   text-align: left;
@@ -582,7 +585,9 @@ input:focus-visible,
 .favorite-list-item {
   position: relative;
   cursor: grab;
+  touch-action: none;
   user-select: none;
+  transition: opacity 160ms var(--ease-ui), transform 160ms var(--ease-ui);
 }
 
 .favorite-list-item::after {
@@ -609,7 +614,20 @@ input:focus-visible,
 
 .favorite-list-item.is-dragging {
   cursor: grabbing;
-  opacity: 0.58;
+  opacity: 0.28;
+}
+
+.favorite-drag-preview {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 80;
+  margin: 0;
+  pointer-events: none;
+  cursor: grabbing;
+  opacity: 0.98;
+  transform-origin: top left;
+  will-change: transform;
 }
 
 .favorite-item-button {
@@ -625,12 +643,19 @@ input:focus-visible,
   cursor: grabbing;
 }
 
+.favorite-drag-preview .favorite-item-button {
+  cursor: grabbing;
+  box-shadow: var(--shadow-md);
+  transform: scale(1.015);
+}
+
 .mini-list .favorite-item-button:hover,
 .mini-list .favorite-item-button:active {
   transform: none;
 }
 
-.mini-list .favorite-remove-button {
+.mini-list .favorite-remove-button,
+.favorite-drag-preview .favorite-remove-button {
   position: absolute;
   top: 50%;
   right: 0.44rem;
@@ -652,7 +677,8 @@ input:focus-visible,
   transition: opacity 160ms var(--ease-ui), color 160ms var(--ease-ui);
 }
 
-.mini-list .favorite-remove-button span {
+.mini-list .favorite-remove-button span,
+.favorite-drag-preview .favorite-remove-button span {
   display: block;
   font-size: 1.08rem;
   font-weight: 600;
@@ -663,6 +689,12 @@ input:focus-visible,
 .favorite-list-item:focus-within .favorite-remove-button {
   opacity: 1;
   pointer-events: auto;
+  color: rgba(169, 54, 40, 0.58);
+}
+
+.favorite-drag-preview .favorite-remove-button {
+  opacity: 1;
+  pointer-events: none;
   color: rgba(169, 54, 40, 0.58);
 }
 

@@ -761,7 +761,10 @@ function handleFavoritePointerDown(event) {
     startY: event.clientY,
     targetId: "",
     placeAfterTarget: false,
-    isDragging: false
+    isDragging: false,
+    preview: null,
+    offsetX: 0,
+    offsetY: 0
   };
 }
 
@@ -777,10 +780,12 @@ function handleFavoritePointerMove(event) {
 
     favoritePointerDrag.isDragging = true;
     favoritePointerDrag.source.classList.add("is-dragging");
+    createFavoriteDragPreview(favoritePointerDrag, event);
     suppressFavoriteClick = true;
   }
 
   event.preventDefault();
+  updateFavoriteDragPreview(favoritePointerDrag, event.clientX, event.clientY);
   clearFavoriteDropMarkers();
 
   const target = document
@@ -815,9 +820,10 @@ function handleFavoritePointerUp(event) {
 }
 
 function cancelFavoritePointerDrag() {
-  const wasDragging = favoritePointerDrag?.isDragging;
+  const drag = favoritePointerDrag;
+  const wasDragging = drag?.isDragging;
   favoritePointerDrag = null;
-  clearFavoriteDragState();
+  clearFavoriteDragState(drag);
 
   if (wasDragging) {
     window.setTimeout(() => {
@@ -828,6 +834,36 @@ function cancelFavoritePointerDrag() {
 
 function getFavoritePointerId(event) {
   return event.pointerId ?? "mouse";
+}
+
+function createFavoriteDragPreview(drag, event) {
+  const rect = drag.source.getBoundingClientRect();
+  const preview = drag.source.cloneNode(true);
+
+  drag.offsetX = event.clientX - rect.left;
+  drag.offsetY = event.clientY - rect.top;
+  drag.preview = preview;
+
+  preview.classList.remove("is-dragging", "is-drop-before", "is-drop-after");
+  preview.classList.add("favorite-drag-preview");
+  preview.setAttribute("aria-hidden", "true");
+  preview.inert = true;
+  preview.querySelectorAll("button").forEach(button => {
+    button.tabIndex = -1;
+  });
+  preview.style.width = `${rect.width}px`;
+  preview.style.height = `${rect.height}px`;
+  updateFavoriteDragPreview(drag, event.clientX, event.clientY);
+
+  document.body.append(preview);
+}
+
+function updateFavoriteDragPreview(drag, clientX, clientY) {
+  if (!drag.preview) return;
+
+  const x = Math.round(clientX - drag.offsetX);
+  const y = Math.round(clientY - drag.offsetY);
+  drag.preview.style.transform = `translate3d(${x}px, ${y}px, 0)`;
 }
 
 function setFavoriteDropPosition(item, clientY) {
@@ -852,7 +888,12 @@ function clearFavoriteDropMarkers() {
   });
 }
 
-function clearFavoriteDragState() {
+function clearFavoriteDragState(drag = null) {
+  drag?.preview?.remove();
+  document.querySelectorAll(".favorite-drag-preview").forEach(preview => {
+    preview.remove();
+  });
+
   els.favoritesList.querySelectorAll(".favorite-list-item").forEach(item => {
     item.classList.remove("is-dragging", "is-drop-before", "is-drop-after");
   });

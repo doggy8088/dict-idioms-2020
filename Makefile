@@ -6,6 +6,8 @@ OPEN_BROWSER ?= 1
 OPEN ?= open
 URL = http://$(HOST):$(PORT)/
 
+.DEFAULT_GOAL := serve
+
 .PHONY: help serve
 
 help:
