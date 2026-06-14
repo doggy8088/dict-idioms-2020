@@ -23,6 +23,7 @@ const state = {
   openId: "",
   pronunciationMode: readPronunciationMode(),
   dailyItem: null,
+  visibleResults: [],
   favoritesTitle: favoriteSettings.title,
   favorites: new Set(favoriteSettings.favorites)
 };
@@ -191,11 +192,7 @@ function bindEvents() {
 
   els.modalClose.addEventListener("click", closeIdiomModal);
   els.modal.querySelector("[data-close-modal]").addEventListener("click", closeIdiomModal);
-  document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && !els.modal.classList.contains("is-hidden")) {
-      closeIdiomModal();
-    }
-  });
+  document.addEventListener("keydown", handleGlobalKeyboardShortcuts);
 
   document.addEventListener("click", event => {
     const link = event.target.closest("[data-related-idiom]");
@@ -212,6 +209,53 @@ function bindEvents() {
   document.addEventListener("mouseup", handleFavoritePointerUp);
 
   window.addEventListener("popstate", syncFromLocation);
+}
+
+function handleGlobalKeyboardShortcuts(event) {
+  if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && !els.modal.classList.contains("is-hidden") && !isKeyboardTextTarget(event.target)) {
+    event.preventDefault();
+    openAdjacentVisibleResult(event.key === "ArrowRight" ? 1 : -1);
+    return;
+  }
+
+  if (event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey && !isKeyboardTextTarget(event.target)) {
+    event.preventDefault();
+    els.input.focus();
+    els.input.select();
+    return;
+  }
+
+  if (event.key !== "Escape") return;
+
+  if (!els.modal.classList.contains("is-hidden")) {
+    closeIdiomModal();
+    return;
+  }
+
+  if (isEditingFavoriteTitle()) return;
+  if (!els.input.value && !state.query) return;
+
+  event.preventDefault();
+  els.input.value = "";
+  state.query = "";
+  renderResults(pickOpeningSet());
+  updateLocationFromState();
+}
+
+function isKeyboardTextTarget(target) {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+}
+
+function openAdjacentVisibleResult(direction) {
+  const results = state.visibleResults.filter(Boolean);
+  if (results.length < 2) return;
+
+  const currentIndex = results.findIndex(item => String(item.編號 || item.成語) === state.openId);
+  const fallbackIndex = direction > 0 ? -1 : 0;
+  const nextIndex = (currentIndex === -1 ? fallbackIndex : currentIndex) + direction;
+  const wrappedIndex = (nextIndex + results.length) % results.length;
+  openIdiomModal(results[wrappedIndex], true, "replace");
 }
 
 function setQuickPicks() {
@@ -293,6 +337,7 @@ function pickOpeningSet(items = state.idioms) {
 
 function renderResults(items) {
   els.results.innerHTML = "";
+  state.visibleResults = [...items];
 
   if (!items.length) {
     els.resultCount.textContent = "找不到符合的成語";
