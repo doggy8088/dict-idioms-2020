@@ -21,8 +21,10 @@ const state = {
   query: "",
   matchMode: "any",
   filter: "main",
+  currentPage: 1,
   openId: "",
   pronunciationMode: readPronunciationMode(),
+  totalSearchResults: 0,
   dailyItem: null,
   visibleResults: [],
   favoritesTitle: favoriteSettings.title,
@@ -104,6 +106,7 @@ function bindEvents() {
   els.form.addEventListener("submit", event => {
     event.preventDefault();
     state.query = normalize(els.input.value);
+    state.currentPage = 1;
     renderResults(searchIdioms());
     updateLocationFromState();
     els.results.focus({ preventScroll: true });
@@ -111,6 +114,7 @@ function bindEvents() {
 
   els.input.addEventListener("input", () => {
     state.query = normalize(els.input.value);
+    state.currentPage = 1;
     renderResults(searchIdioms());
     updateLocationFromState();
   });
@@ -118,6 +122,7 @@ function bindEvents() {
   els.filters.forEach(button => {
     button.addEventListener("click", () => {
       state.filter = button.dataset.filter;
+      state.currentPage = 1;
       els.filters.forEach(item => item.classList.toggle("is-active", item === button));
       renderResults(searchIdioms());
       updateLocationFromState();
@@ -128,11 +133,14 @@ function bindEvents() {
     button.addEventListener("click", () => {
       els.input.value = button.dataset.query;
       state.query = normalize(button.dataset.query);
+      state.currentPage = 1;
       renderResults(searchIdioms());
       updateLocationFromState();
       els.input.focus();
     });
   });
+
+  els.results.addEventListener("click", handleResultsPaginationClick);
 
   els.randomTop.addEventListener("click", () => {
     const item = randomMainIdiom();
@@ -239,6 +247,7 @@ function handleGlobalKeyboardShortcuts(event) {
   event.preventDefault();
   els.input.value = "";
   state.query = "";
+  state.currentPage = 1;
   renderResults(pickOpeningSet());
   updateLocationFromState();
 }
@@ -307,14 +316,35 @@ function searchIdioms() {
 
   const queryPlan = parseQueryPlan(state.query, state.matchMode);
 
-  if (!queryPlan.terms.length) return pickOpeningSet(items);
+  if (!queryPlan.terms.length) {
+    state.totalSearchResults = 0;
+    state.currentPage = 1;
+    return pickOpeningSet(items);
+  }
 
-  return items
+  const sortedItems = items
     .map(item => ({ item, score: scoreItem(item, queryPlan) }))
     .filter(entry => entry.score > 0)
     .sort((a, b) => b.score - a.score || Number(a.item.編號) - Number(b.item.編號))
-    .slice(0, MAX_RESULTS)
     .map(entry => entry.item);
+
+  state.totalSearchResults = sortedItems.length;
+  state.currentPage = normalizeCurrentPage(state.currentPage, state.totalSearchResults);
+  return sortedItems;
+}
+
+function getSearchTotalPages(total = state.totalSearchResults) {
+  if (!total || total <= 0) return 1;
+  return Math.ceil(total / MAX_RESULTS);
+}
+
+function normalizeCurrentPage(page, total = state.totalSearchResults) {
+  const totalPages = getSearchTotalPages(total);
+  const value = Number.parseInt(page, 10);
+
+  if (!Number.isFinite(value) || value < 1) return 1;
+  if (value > totalPages) return totalPages;
+  return value;
 }
 
 function parseQueryPlan(query, matchMode = "any") {
@@ -406,20 +436,161 @@ function pickOpeningSet(items = state.idioms) {
 
 function renderResults(items, options = {}) {
   els.results.innerHTML = "";
-  state.visibleResults = [...items];
+
+  const isSearchMode = Boolean(state.query);
+  const totalResults = isSearchMode ? state.totalSearchResults : items.length;
 
   if (!items.length) {
-    els.resultCount.textContent = "找不到符合的成語";
-    els.results.innerHTML = `<p class="empty-state">沒有找到符合條件的成語。可以改用更短的詞，例如「勇敢」、「朋友」或「吝嗇」。</p>`;
+    state.visibleResults = [];
+    if (isSearchMode) {
+      els.resultCount.textContent = "找不到符合的成語";
+      els.results.innerHTML = `<p class="empty-state">沒有找到符合條件的成語。可以改用更短的詞，例如「勇敢」、「朋友」或「吝嗇」。</p>`;
+      return;
+    }
+
+    if (options.label) {
+      els.resultCount.textContent = options.label;
+      return;
+    }
+
+    els.resultCount.textContent = `先放上 ${items.length} 張推薦卡`;
     return;
   }
 
+  let visibleItems = items;
+  let start = 0;
+  let end = items.length;
+
+  if (isSearchMode) {
+    const totalPages = getSearchTotalPages(totalResults);
+    state.currentPage = normalizeCurrentPage(state.currentPage, totalResults);
+    start = (state.currentPage - 1) * MAX_RESULTS;
+    end = Math.min(start + MAX_RESULTS, totalResults);
+    visibleItems = items.slice(start, end);
+  }
+
+  state.visibleResults = [...visibleItems];
+
   const fragment = document.createDocumentFragment();
-  items.forEach((item, index) => fragment.appendChild(createCard(item, index)));
+  visibleItems.forEach((item, index) => fragment.appendChild(createCard(item, index)));
   els.results.appendChild(fragment);
 
-  const label = options.label || (state.query ? `顯示 ${items.length} 筆結果` : `先放上 ${items.length} 張推薦卡`);
+  const label = options.label || (
+    isSearchMode
+      ? `顯示 ${start + 1} ~ ${Math.min(start + MAX_RESULTS, totalResults)} 筆結果，共 ${totalResults} 筆成語`
+      : `先放上 ${items.length} 張推薦卡`
+  );
   els.resultCount.textContent = label;
+
+  if (isSearchMode) {
+    const totalPages = getSearchTotalPages(totalResults);
+    if (totalPages > 1) {
+      els.results.appendChild(renderPagination(totalPages));
+    }
+  }
+}
+
+function renderPagination(totalPages) {
+  if (totalPages <= 1) return document.createDocumentFragment();
+
+  const nav = document.createElement("nav");
+  nav.className = "results-pagination";
+  nav.setAttribute("aria-label", "查詢結果分頁");
+
+  const fragment = document.createDocumentFragment();
+
+  const prevPage = Math.max(1, state.currentPage - 1);
+  fragment.appendChild(createPaginationButton(prevPage, "上一頁", {
+    isDisabled: state.currentPage <= 1,
+    ariaLabel: "前往上一頁"
+  }));
+
+  const pages = [];
+  const left = Math.max(1, state.currentPage - 2);
+  const right = Math.min(totalPages, state.currentPage + 2);
+
+  for (let page = 1; page <= totalPages; page += 1) {
+    if (page === 1 || page === totalPages || (page >= left && page <= right)) {
+      pages.push(page);
+    }
+  }
+
+  const uniquePages = [...new Set(pages)].sort((a, b) => a - b);
+
+  let previousPage = 0;
+  uniquePages.forEach((page) => {
+    if (page > previousPage + 1) {
+      fragment.appendChild(createPaginationSpacer());
+    }
+    fragment.appendChild(createPaginationButton(page, String(page), {
+      isCurrent: page === state.currentPage,
+      ariaLabel: `前往第 ${page} 頁`
+    }));
+    previousPage = page;
+  });
+
+  const nextPage = Math.min(totalPages, state.currentPage + 1);
+  fragment.appendChild(createPaginationButton(nextPage, "下一頁", {
+    isDisabled: state.currentPage >= totalPages,
+    ariaLabel: "前往下一頁"
+  }));
+
+  nav.appendChild(fragment);
+  return nav;
+}
+
+function createPaginationButton(page, text, options = {}) {
+  if (options.isCurrent) {
+    const span = document.createElement("span");
+    span.className = "results-pagination__item results-pagination__item--current";
+    span.textContent = text;
+    span.setAttribute("aria-current", "page");
+    return span;
+  }
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "results-pagination__item";
+  button.dataset.page = String(page);
+  button.textContent = text;
+
+  if (options.isDisabled) {
+    button.disabled = true;
+  }
+
+  if (options.ariaLabel) {
+    button.setAttribute("aria-label", options.ariaLabel);
+  }
+
+  return button;
+}
+
+function createPaginationSpacer() {
+  const span = document.createElement("span");
+  span.className = "results-pagination__item results-pagination__item--ellipsis";
+  span.textContent = "…";
+  return span;
+}
+
+function handleResultsPaginationClick(event) {
+  const button = event.target.closest(".results-pagination__item[data-page]");
+  if (!button) return;
+
+  event.preventDefault();
+
+  const nextPage = Number.parseInt(button.dataset.page, 10);
+  if (!Number.isFinite(nextPage) || nextPage === state.currentPage) return;
+
+  state.currentPage = normalizeCurrentPage(nextPage, state.totalSearchResults);
+  renderResults(searchIdioms());
+  updateLocationFromState();
+
+  requestAnimationFrame(() => {
+    const resultsTitle = document.querySelector("#results-title");
+    if (!resultsTitle) return;
+    const offsetTop = Math.max(0, resultsTitle.getBoundingClientRect().top + window.scrollY - 50);
+    window.scrollTo({ top: offsetTop, behavior: "smooth" });
+  });
 }
 
 function createCard(item, index) {
@@ -1659,10 +1830,12 @@ function applySearchFromUrl() {
   const filter = params.get("filter") || "main";
   const matchParam = (params.get("match") || "any").toLowerCase();
   const openId = params.get("id") || "";
+  const page = Number.parseInt(params.get("page") || "1", 10);
 
   els.input.value = query;
   state.query = normalize(query);
   state.matchMode = ["exact", "prefix", "suffix", "any"].includes(matchParam) ? matchParam : "any";
+  state.currentPage = Number.isFinite(page) && page > 0 ? page : 1;
 
   state.filter = ["all", "main", "phrase", "story", "quiz"].includes(filter) ? filter : "main";
   els.filters.forEach(item => item.classList.toggle("is-active", item.dataset.filter === state.filter));
@@ -1673,11 +1846,14 @@ function applySearchFromUrl() {
 function updateLocationFromState(openId, onlyOpenId = false, mode = "replace") {
   const params = new URLSearchParams();
   const q = els.input.value.trim();
+  const totalPages = state.query ? getSearchTotalPages() : 1;
 
   if (q) params.set("q", q);
   if (state.matchMode && state.matchMode !== "any") params.set("match", state.matchMode);
   else params.delete("match");
   if (state.filter !== "main") params.set("filter", state.filter);
+  if (state.query && totalPages > 1) params.set("page", String(state.currentPage));
+  else params.delete("page");
 
   if (onlyOpenId) {
     if (openId && String(openId).length) params.set("id", String(openId));

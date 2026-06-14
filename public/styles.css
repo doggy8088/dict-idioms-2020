@@ -872,6 +872,85 @@ input:focus-visible,
   gap: var(--gap);
 }
 
+.results-pagination {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.52rem;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-top: 0.95rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(61, 47, 34, 0.16);
+  position: relative;
+}
+
+.results-pagination__item {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.95rem;
+  min-height: 44px;
+  padding: 0.55rem 0.95rem;
+  background: linear-gradient(180deg, #fffaf4 0%, var(--paper-strong) 100%);
+  color: var(--ink);
+  text-align: center;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  box-shadow: var(--shadow-sm);
+  transition: transform 140ms var(--ease-ui), box-shadow 140ms var(--ease-ui), background 140ms var(--ease-ui), border-color 140ms var(--ease-ui), color 140ms var(--ease-ui);
+}
+
+.results-pagination__item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(169, 54, 40, 0.4);
+  box-shadow: var(--shadow-md);
+  background: linear-gradient(180deg, #fff7ea 0%, #fff3d8 100%);
+}
+
+.results-pagination__item:active {
+  transform: translateY(-1px) scale(0.99);
+  border-color: rgba(169, 54, 40, 0.48);
+  box-shadow: var(--shadow-lg);
+}
+
+.results-pagination__item:not(:disabled):hover {
+  color: var(--seal-dark);
+}
+
+.results-pagination__item--current {
+  border-color: rgba(169, 54, 40, 0.45);
+  background: linear-gradient(135deg, var(--seal), var(--seal-dark)) padding-box;
+  color: #fffaf0;
+  box-shadow: var(--shadow-md);
+  min-width: 3.1rem;
+}
+
+.results-pagination__item[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.results-pagination__item:focus-visible {
+  outline: 3px solid rgba(169, 54, 40, 0.28);
+  outline-offset: 3px;
+}
+
+.results-pagination__item--ellipsis {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  min-width: 1.2em;
+  padding: 0.4rem 0.55rem;
+  min-height: 44px;
+  pointer-events: none;
+}
+
 .idiom-card {
   display: flex;
   flex-direction: column;
