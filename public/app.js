@@ -204,6 +204,14 @@ function bindEvents() {
   els.shareFavorites.addEventListener("click", shareFavoritesLink);
 
   els.clearFavorites.addEventListener("click", () => {
+    if (!state.favorites.size) {
+      setFavoritesStatus("目前沒有可清空的收藏");
+      return;
+    }
+
+    const shouldClear = window.confirm("確定要清空全部收藏嗎？這個動作無法復原。");
+    if (!shouldClear) return;
+
     state.favorites.clear();
     saveFavorites();
     renderFavorites();
