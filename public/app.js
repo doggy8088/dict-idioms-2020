@@ -1580,9 +1580,16 @@ function findIdiomByIdentifier(identifier) {
   );
 }
 
-function buildIdiomShareUrl(phrase) {
+function buildStrokePracticeUrl(phrase) {
   const idiom = String(phrase || "").trim();
   return `https://stroke.gh.miniasp.com/?sentence=${encodeURIComponent(idiom)}`;
+}
+
+function buildIdiomShareUrl(item) {
+  const id = String(item?.編號 || item?.成語 || "").trim();
+  const params = new URLSearchParams();
+  if (id) params.set("id", id);
+  return `${window.location.origin}${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
 }
 
 function openRelatedIdiom(name) {
@@ -1635,7 +1642,8 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
   const favoriteInModal = els.modalContent.querySelector("#favoriteInModal");
   const writeWordInModal = els.modalContent.querySelector("#writeWordInModal");
   const shareInModal = els.modalContent.querySelector("#shareInModal");
-  const shareUrl = buildIdiomShareUrl(item.成語);
+  const practiceUrl = buildStrokePracticeUrl(item.成語);
+  const shareUrl = buildIdiomShareUrl(item);
 
   if (favoriteInModal) {
     favoriteInModal.addEventListener("click", () => {
@@ -1647,7 +1655,7 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
   if (writeWordInModal) {
     writeWordInModal.title = `前往「${item.成語 || "未命名成語"}」寫字頁面`;
     writeWordInModal.addEventListener("click", () => {
-      window.open(shareUrl, "_blank", "noopener,noreferrer");
+      window.open(practiceUrl, "_blank", "noopener,noreferrer");
     });
   }
 
@@ -1658,10 +1666,12 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
       shareInModal.disabled = true;
 
       try {
-        await navigator.clipboard?.writeText(shareUrl);
+        if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+        await navigator.clipboard.writeText(shareUrl);
         shareInModal.textContent = "已複製連結";
       } catch {
-        shareInModal.textContent = "複製失敗";
+        window.prompt("複製成語分享連結", shareUrl);
+        shareInModal.textContent = "請手動複製";
       }
 
       window.setTimeout(() => {
