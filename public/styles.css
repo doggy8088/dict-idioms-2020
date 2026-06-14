@@ -649,6 +649,61 @@ input:focus-visible,
   opacity: 0.28;
 }
 
+.favorite-list-item.is-removing {
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  transform-origin: center right;
+}
+
+.favorite-list-item.is-removing::before {
+  background: linear-gradient(135deg, #777 0%, #b9afa3 100%);
+  box-shadow: 0 8px 18px rgba(80, 70, 62, 0.22);
+}
+
+.favorite-remove-burst {
+  position: fixed;
+  z-index: 120;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.favorite-peel-front {
+  position: absolute;
+  top: -8px;
+  right: -18px;
+  width: 38px;
+  height: calc(100% + 16px);
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 55% 50%, rgba(244, 231, 198, 0.5), transparent 58%),
+    linear-gradient(90deg, transparent, rgba(96, 88, 76, 0.42), transparent);
+  filter: blur(4px);
+  opacity: 0;
+  transform: translateX(0);
+  animation: favorite-peel-front 860ms cubic-bezier(0.32, 0, 0.2, 1) both;
+}
+
+.favorite-remove-burst span {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--ash-size);
+  height: var(--ash-size);
+  border-radius: 999px;
+  background: rgba(68, 63, 57, 0.68);
+  box-shadow: 0 0 3px rgba(68, 63, 57, 0.18);
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(0.55);
+  will-change: opacity, transform;
+}
+
+.favorite-remove-burst span.is-ember {
+  background: rgba(226, 205, 162, 0.76);
+  box-shadow: 0 0 8px rgba(226, 205, 162, 0.38);
+}
+
 .favorite-drag-preview {
   position: fixed;
   top: 0;
@@ -749,6 +804,43 @@ input:focus-visible,
     pointer-events: auto;
     color: rgba(169, 54, 40, 0.58);
     transform: translateY(-50%);
+  }
+}
+
+@keyframes favorite-ash-drift {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.35);
+  }
+
+  14% {
+    opacity: 0.9;
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(var(--ash-x) - 50%), calc(var(--ash-y) - 50%), 0) scale(1.9);
+  }
+}
+
+@keyframes favorite-peel-front {
+  0% {
+    opacity: 0;
+    transform: translateX(0) scaleY(0.75);
+  }
+
+  16% {
+    opacity: 0.9;
+  }
+
+  82% {
+    opacity: 0.65;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--peel-distance))) scaleY(1.12);
   }
 }
 

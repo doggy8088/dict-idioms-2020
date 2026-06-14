@@ -725,11 +725,7 @@ function renderFavorites() {
       if (!item) return;
 
       if (button.dataset.action === "remove") {
-        state.favorites.delete(String(item.編號 || item.成語));
-        saveFavorites();
-        renderFavorites();
-        renderResults(searchIdioms());
-        setFavoritesStatus(`已刪除「${item.成語}」`);
+        removeFavoriteWithEffect(item, button);
         return;
       }
 
@@ -743,6 +739,194 @@ function renderFavorites() {
 
 function syncFavoritesCount(count = state.favorites.size) {
   els.favoritesCount.textContent = `${count.toLocaleString("zh-TW")} 筆`;
+}
+
+function removeFavoriteWithEffect(item, button) {
+  const key = String(item.編號 || item.成語);
+  const listItem = button.closest(".favorite-list-item");
+
+  if (!listItem) {
+    removeFavoriteItem(item);
+    return;
+  }
+
+  suppressFavoriteClick = true;
+  listItem.classList.add("is-removing");
+  const ashFinished = createFavoriteRowAshEffect(listItem);
+
+  const height = listItem.getBoundingClientRect().height;
+  listItem.style.height = `${height}px`;
+  const peelAnimation = listItem.animate(
+    [
+      {
+        clipPath: "inset(0 0 0 0)",
+        filter: "grayscale(0)",
+        opacity: 1
+      },
+      {
+        clipPath: "inset(0 100% 0 0)",
+        filter: "grayscale(1)",
+        opacity: 0.18
+      }
+    ],
+    {
+      duration: 820,
+      easing: "cubic-bezier(0.32, 0, 0.2, 1)",
+      fill: "forwards"
+    }
+  );
+
+  Promise.all([ashFinished, peelAnimation.finished.catch(() => {})])
+    .then(() => collapseFavoriteListItem(listItem, height))
+    .catch(() => {})
+    .finally(() => {
+      listItem.style.height = "";
+      removeFavoriteItem(item);
+      window.setTimeout(() => {
+        suppressFavoriteClick = false;
+      }, 0);
+    });
+}
+
+function collapseFavoriteListItem(listItem, height) {
+  return listItem.animate(
+    [
+      {
+        height: `${height}px`,
+        opacity: 0,
+        transform: "translate3d(0, 0, 0)"
+      },
+      {
+        height: "0px",
+        opacity: 0,
+        transform: "translate3d(0, -6px, 0)"
+      }
+    ],
+    {
+      duration: 260,
+      easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+      fill: "forwards"
+    }
+  ).finished;
+}
+
+function removeFavoriteItem(item) {
+  state.favorites.delete(String(item.編號 || item.成語));
+  saveFavorites();
+  renderFavorites();
+  renderResults(searchIdioms());
+  setFavoritesStatus(`已刪除「${item.成語}」`);
+}
+
+function createFavoriteRowAshEffect(listItem) {
+  const rect = listItem.getBoundingClientRect();
+  const burst = document.createElement("span");
+  const peelFront = document.createElement("span");
+  const columns = 32;
+  const rows = 8;
+  const particles = [];
+  const startedAt = performance.now();
+  const duration = 720;
+
+  burst.className = "favorite-remove-burst";
+  burst.setAttribute("aria-hidden", "true");
+  burst.style.left = `${rect.left}px`;
+  burst.style.top = `${rect.top}px`;
+  burst.style.width = `${rect.width}px`;
+  burst.style.height = `${rect.height}px`;
+  burst.style.setProperty("--peel-distance", `${rect.width + 36}px`);
+
+  peelFront.className = "favorite-peel-front";
+  peelFront.setAttribute("aria-hidden", "true");
+  burst.append(peelFront);
+
+  for (let index = 0; index < columns * rows; index += 1) {
+    const ash = document.createElement("span");
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const jitterX = (Math.random() - 0.5) * 14;
+    const jitterY = (Math.random() - 0.5) * 12;
+    const x = (columns === 1 ? 0 : (column / (columns - 1)) * rect.width) + jitterX;
+    const y = (rows === 1 ? 0 : (row / (rows - 1)) * rect.height) + jitterY;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 9 + Math.random() * 18;
+    const size = 1.2 + Math.random() * 2.2;
+    const peelDelay = (columns - 1 - column) * 18 + Math.random() * 90 + row * 8;
+    const isEmber = Math.random() < 0.16;
+
+    if (isEmber) ash.classList.add("is-ember");
+    ash.style.left = `${x}px`;
+    ash.style.top = `${y}px`;
+    ash.style.setProperty("--ash-size", `${isEmber ? size + 0.8 : size}px`);
+    burst.append(ash);
+    particles.push({
+      element: ash,
+      baseX: x,
+      baseY: y,
+      x: 0,
+      y: 0,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      rotation: Math.random() * 180,
+      spin: (Math.random() - 0.5) * 140,
+      drag: 0.88 + Math.random() * 0.08,
+      delay: peelDelay,
+      duration: isEmber ? 420 + Math.random() * 220 : 560 + Math.random() * 260,
+      maxOpacity: isEmber ? 0.98 : 0.78,
+      scaleBoost: isEmber ? 1.25 : 0.65
+    });
+  }
+
+  document.body.append(burst);
+  return new Promise(resolve => {
+    requestAnimationFrame(now => updateFavoriteAshParticles(burst, particles, startedAt, now, duration, resolve));
+  });
+}
+
+function updateFavoriteAshParticles(burst, particles, startedAt, now, duration, resolve) {
+  if (!burst.isConnected) {
+    resolve();
+    return;
+  }
+
+  const elapsed = now - startedAt;
+  const gravity = 0;
+  const margin = 50;
+  const nextParticles = [];
+
+  particles.forEach((particle, index) => {
+    const localElapsed = elapsed - particle.delay;
+    if (localElapsed < 0) {
+      nextParticles.push(particle);
+      return;
+    }
+
+    const progress = Math.min(localElapsed / particle.duration, 1);
+    const dt = 1 / 60;
+    const turbulenceX = Math.sin((elapsed + index * 37) * 0.012) * 4;
+    const turbulenceY = Math.cos((elapsed + index * 53) * 0.01) * 4;
+    particle.vx = particle.vx * particle.drag + turbulenceX * dt;
+    particle.vy = particle.vy * particle.drag + (gravity + turbulenceY) * dt;
+    particle.x += particle.vx * dt;
+    particle.y += particle.vy * dt;
+    particle.x = Math.min(Math.max(particle.x, -particle.baseX - margin), burst.offsetWidth + margin - particle.baseX);
+    particle.y = Math.min(Math.max(particle.y, -particle.baseY - margin), burst.offsetHeight + margin - particle.baseY);
+    particle.rotation += particle.spin * dt;
+
+    const opacity = Math.max(0, 0.92 * (1 - progress) ** 1.15);
+    const scale = 0.68 + progress * particle.scaleBoost;
+    particle.element.style.opacity = String(Math.min(opacity, particle.maxOpacity));
+    particle.element.style.transform = `translate3d(${particle.x}px, ${particle.y}px, 0) rotate(${particle.rotation}deg) scale(${scale})`;
+
+    if (progress < 1) nextParticles.push(particle);
+  });
+
+  if (nextParticles.length) {
+    requestAnimationFrame(nextNow => updateFavoriteAshParticles(burst, nextParticles, startedAt, nextNow, duration, resolve));
+  } else {
+    burst.remove();
+    resolve();
+  }
 }
 
 function handleFavoritePointerDown(event) {
