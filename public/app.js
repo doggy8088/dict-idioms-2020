@@ -927,70 +927,102 @@ function clearFavoriteDragState(drag = null) {
 }
 
 function finishFavoriteReorder(drag) {
-  const destinationRect = getFavoriteDropDestinationRect(drag);
+  const oldRects = getFavoriteItemRects();
+  const favoriteKeys = reorderedFavoriteKeys(drag.id, drag.targetId, drag.placeAfterTarget);
   favoritePointerDrag = null;
   clearFavoriteDropMarkers();
 
-  window.setTimeout(() => {
-    suppressFavoriteClick = false;
-  }, 0);
+  if (!favoriteKeys) {
+    clearFavoriteDragState(drag);
+    window.setTimeout(() => {
+      suppressFavoriteClick = false;
+    }, 0);
+    return;
+  }
 
-  animateFavoriteDrop(drag, destinationRect).then(() => {
-    reorderFavorite(drag.id, drag.targetId, drag.placeAfterTarget);
+  state.favorites = new Set(favoriteKeys);
+  saveFavorites();
+  renderFavorites();
+  setFavoritesStatus("已更新收藏順序");
+
+  animateFavoriteInsertion(drag, oldRects).finally(() => {
+    window.setTimeout(() => {
+      suppressFavoriteClick = false;
+    }, 0);
   });
 }
 
-function getFavoriteDropDestinationRect(drag) {
-  const items = [...els.favoritesList.querySelectorAll(".favorite-list-item")];
-  const favoriteKeys = [...state.favorites];
-  const sourceIndex = favoriteKeys.indexOf(drag.id);
-  const targetIndex = favoriteKeys.indexOf(drag.targetId);
-
-  if (sourceIndex === -1 || targetIndex === -1) {
-    return drag.source.getBoundingClientRect();
-  }
-
-  const nextKeys = favoriteKeys.filter(key => key !== drag.id);
-  let insertIndex = nextKeys.indexOf(drag.targetId);
-  if (drag.placeAfterTarget) insertIndex += 1;
-
-  const destinationKey = favoriteKeys[Math.min(insertIndex, favoriteKeys.length - 1)];
-  const destinationItem = items.find(item => item.dataset.favoriteId === destinationKey);
-
-  return (destinationItem || drag.source).getBoundingClientRect();
+function getFavoriteItemRects() {
+  return new Map(
+    [...els.favoritesList.querySelectorAll(".favorite-list-item")]
+      .map(item => [item.dataset.favoriteId || "", item.getBoundingClientRect()])
+      .filter(([id]) => id)
+  );
 }
 
-function reorderFavorite(sourceId, targetId, placeAfterTarget) {
+function reorderedFavoriteKeys(sourceId, targetId, placeAfterTarget) {
   const favoriteKeys = [...state.favorites];
   const sourceIndex = favoriteKeys.indexOf(sourceId);
   const targetIndex = favoriteKeys.indexOf(targetId);
 
-  if (sourceIndex === -1 || targetIndex === -1) return;
+  if (sourceIndex === -1 || targetIndex === -1) return null;
 
   const [sourceKey] = favoriteKeys.splice(sourceIndex, 1);
   let insertIndex = favoriteKeys.indexOf(targetId);
   if (placeAfterTarget) insertIndex += 1;
 
   favoriteKeys.splice(insertIndex, 0, sourceKey);
-  state.favorites = new Set(favoriteKeys);
-  saveFavorites();
-  renderFavorites();
-  setFavoritesStatus("已更新收藏順序");
+  return favoriteKeys;
 }
 
-function animateFavoriteDrop(drag, destinationRect) {
-  if (!drag?.preview || !destinationRect || !("animate" in Element.prototype)) {
+function animateFavoriteInsertion(drag, oldRects) {
+  if (!drag?.preview || !oldRects?.size || !("animate" in Element.prototype)) {
     clearFavoriteDragState(drag);
     return Promise.resolve();
   }
 
+  const items = [...els.favoritesList.querySelectorAll(".favorite-list-item")];
+  const destinationItem = items.find(item => item.dataset.favoriteId === drag.id);
+  if (!destinationItem) {
+    clearFavoriteDragState(drag);
+    return Promise.resolve();
+  }
+
+  const destinationRect = destinationItem.getBoundingClientRect();
   const previewRect = drag.preview.getBoundingClientRect();
+  const animations = [];
+
+  destinationItem.style.opacity = "0";
   drag.preview.style.transform = `translate3d(${Math.round(previewRect.left)}px, ${Math.round(previewRect.top)}px, 0)`;
   drag.preview.style.width = `${destinationRect.width}px`;
   drag.preview.style.height = `${destinationRect.height}px`;
-  drag.preview.dataset.previewIndex = String(getFavoritePreviewIndex(drag));
+  drag.preview.dataset.previewIndex = String([...state.favorites].indexOf(drag.id) + 1);
 
-  const animation = drag.preview.animate(
+  items.forEach(item => {
+    const id = item.dataset.favoriteId || "";
+    if (id === drag.id) return;
+
+    const oldRect = oldRects.get(id);
+    if (!oldRect) return;
+
+    const newRect = item.getBoundingClientRect();
+    const deltaX = oldRect.left - newRect.left;
+    const deltaY = oldRect.top - newRect.top;
+    if (!deltaX && !deltaY) return;
+
+    animations.push(item.animate(
+      [
+        { transform: `translate3d(${Math.round(deltaX)}px, ${Math.round(deltaY)}px, 0)` },
+        { transform: "translate3d(0, 0, 0)" }
+      ],
+      {
+        duration: 280,
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)"
+      }
+    ).finished.catch(() => {}));
+  });
+
+  animations.push(drag.preview.animate(
     [
       {
         transform: `translate3d(${Math.round(previewRect.left)}px, ${Math.round(previewRect.top)}px, 0)`,
@@ -1003,17 +1035,38 @@ function animateFavoriteDrop(drag, destinationRect) {
     ],
     {
       duration: 260,
-      easing: "cubic-bezier(0.16, 1, 0.3, 1)"
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+      fill: "forwards"
     }
-  );
+  ).finished.catch(() => {}));
 
-  return animation.finished
-    .catch(() => {})
+  return Promise.all(animations)
     .then(() => {
-      drag.preview?.remove();
-      drag.source?.classList.remove("is-dragging");
+      drag.preview.style.transform = `translate3d(${Math.round(destinationRect.left)}px, ${Math.round(destinationRect.top)}px, 0)`;
+
+      const settleAnimations = [
+        destinationItem.animate(
+          [{ opacity: 0 }, { opacity: 1 }],
+          {
+            duration: 90,
+            easing: "ease-out",
+            fill: "forwards"
+          }
+        ).finished.catch(() => {}),
+        drag.preview.animate(
+          [{ opacity: 1 }, { opacity: 0 }],
+          {
+            duration: 90,
+            easing: "ease-out",
+            fill: "forwards"
+          }
+        ).finished.catch(() => {})
+      ];
+
+      return Promise.all(settleAnimations);
     })
     .finally(() => {
+      destinationItem.style.opacity = "";
       clearFavoriteDragState(drag);
     });
 }
