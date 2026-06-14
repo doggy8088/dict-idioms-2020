@@ -95,6 +95,7 @@
         <section class="panel favorites-panel" aria-labelledby="favorites-title">
           <div class="panel__title-row">
             <h2 id="favorites-title" tabindex="0">我的收藏</h2>
+            <span class="favorites-count" id="favoritesCount" aria-live="polite">0 筆</span>
           </div>
           <div class="favorites-toolbar" aria-label="收藏操作">
             <button class="link-button" id="importFavorites" type="button">匯入</button>
@@ -102,8 +103,8 @@
             <button class="link-button link-button--danger" id="clearFavorites" type="button">清空</button>
             <input id="importFavoritesFile" type="file" accept="application/json,.json" hidden>
           </div>
-          <p class="favorites-status" id="favoritesStatus" role="status" aria-live="polite"></p>
           <div id="favoritesList" class="mini-list" aria-live="polite"></div>
+          <p class="favorites-status" id="favoritesStatus" role="status" aria-live="polite"></p>
         </section>
 
         <section class="panel" aria-labelledby="tips-title">

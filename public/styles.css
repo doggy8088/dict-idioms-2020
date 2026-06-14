@@ -535,6 +535,14 @@ input:focus-visible,
   box-shadow: 0 0 0 1px rgba(169, 54, 40, 0.22) inset;
 }
 
+.favorites-count {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .favorites-toolbar {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -551,8 +559,8 @@ input:focus-visible,
 }
 
 .favorites-status {
-  min-height: 1.35rem;
-  margin: 0.58rem 0 0;
+  min-height: 1.5rem;
+  margin: 10px 0 0;
   color: var(--muted);
   font-size: 0.85rem;
   line-height: 1.5;
@@ -572,55 +580,109 @@ input:focus-visible,
 }
 
 .favorite-list-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 2.28rem;
-  gap: 6px;
-  align-items: center;
+  position: relative;
+  cursor: grab;
+  user-select: none;
+}
+
+.favorite-list-item::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(169, 54, 40, 0.62);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.favorite-list-item.is-drop-before::after {
+  top: -5px;
+  opacity: 1;
+}
+
+.favorite-list-item.is-drop-after::after {
+  bottom: -5px;
+  opacity: 1;
+}
+
+.favorite-list-item.is-dragging {
+  cursor: grabbing;
+  opacity: 0.58;
 }
 
 .favorite-item-button {
   min-width: 0;
+  padding-right: 3.05rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: grab;
+}
+
+.favorite-list-item.is-dragging .favorite-item-button {
+  cursor: grabbing;
+}
+
+.mini-list .favorite-item-button:hover,
+.mini-list .favorite-item-button:active {
+  transform: none;
 }
 
 .mini-list .favorite-remove-button {
+  position: absolute;
+  top: 50%;
+  right: 0.44rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.28rem;
-  height: 2.28rem;
-  min-height: 2.28rem;
+  width: 1.72rem;
+  height: 1.72rem;
+  min-height: 1.72rem;
   padding: 0;
-  color: var(--seal-dark);
+  color: rgba(169, 54, 40, 0.42);
   text-align: center;
+  border: 0;
+  background: transparent;
   opacity: 0;
   pointer-events: none;
-  transform: translateX(4px);
-  transition: opacity 160ms var(--ease-ui), transform 160ms var(--ease-ui), background 160ms var(--ease-ui), color 160ms var(--ease-ui);
+  transform: translateY(-50%);
+  box-shadow: none;
+  transition: opacity 160ms var(--ease-ui), color 160ms var(--ease-ui);
+}
+
+.mini-list .favorite-remove-button span {
+  display: block;
+  font-size: 1.08rem;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .favorite-list-item:hover .favorite-remove-button,
 .favorite-list-item:focus-within .favorite-remove-button {
   opacity: 1;
   pointer-events: auto;
-  transform: translateX(0);
+  color: rgba(169, 54, 40, 0.58);
 }
 
 .mini-list .favorite-remove-button:hover {
-  color: #fffaf0;
-  background:
-    linear-gradient(135deg, var(--seal), var(--seal-dark)) padding-box,
-    linear-gradient(135deg, rgba(255,255,255,0.32), rgba(216,138,41,0.24), rgba(255,255,255,0.08)) border-box;
-  transform: translateX(0) translateY(-2px);
+  color: rgba(169, 54, 40, 0.86);
+  background: transparent;
+  box-shadow: none;
+  transform: translateY(-50%);
+}
+
+.mini-list .favorite-remove-button:active {
+  transform: translateY(-50%);
 }
 
 @media (hover: none) {
   .mini-list .favorite-remove-button {
     opacity: 1;
     pointer-events: auto;
-    transform: none;
+    color: rgba(169, 54, 40, 0.58);
+    transform: translateY(-50%);
   }
 }
 

@@ -3,6 +3,7 @@ const MAX_RESULTS = 24;
 const FAVORITES_KEY = "dict-idioms-favorites";
 const DEFAULT_FAVORITES_TITLE = "我的收藏";
 const FAVORITES_EXPORT_SCHEMA = "dict-idioms-favorites@1";
+const FAVORITE_DRAG_THRESHOLD = 6;
 const PRONUNCIATION_MODE_KEY = "dict-idioms-pronunciation-mode";
 const DEFAULT_OPEN_COUNT = 6;
 const QUICK_KEYWORDS = [
@@ -40,6 +41,7 @@ const els = {
   template: document.querySelector("#idiomTemplate"),
   randomTop: document.querySelector("#randomTop"),
   favoritesTitle: document.querySelector("#favorites-title"),
+  favoritesCount: document.querySelector("#favoritesCount"),
   favoritesList: document.querySelector("#favoritesList"),
   favoritesStatus: document.querySelector("#favoritesStatus"),
   importFavorites: document.querySelector("#importFavorites"),
@@ -57,6 +59,8 @@ const els = {
 
 let favoriteTitleBeforeEdit = state.favoritesTitle;
 let favoriteStatusTimer = 0;
+let favoritePointerDrag = null;
+let suppressFavoriteClick = false;
 
 init();
 
@@ -216,6 +220,12 @@ function bindEvents() {
     event.stopPropagation();
     openRelatedIdiom(link.dataset.relatedIdiom);
   });
+
+  document.addEventListener("pointermove", handleFavoritePointerMove);
+  document.addEventListener("pointerup", handleFavoritePointerUp);
+  document.addEventListener("pointercancel", cancelFavoritePointerDrag);
+  document.addEventListener("mousemove", handleFavoritePointerMove);
+  document.addEventListener("mouseup", handleFavoritePointerUp);
 
   window.addEventListener("popstate", syncFromLocation);
 }
@@ -677,6 +687,8 @@ function renderFavorites() {
     .map(key => state.idioms.find(item => String(item.編號 || item.成語) === key))
     .filter(Boolean);
 
+  syncFavoritesCount(saved.length);
+
   if (!saved.length) {
     els.favoritesList.innerHTML = `<p class="empty-state">還沒有收藏。遇到喜歡的成語，就把它放進自己的小書籤。</p>`;
     return;
@@ -687,15 +699,28 @@ function renderFavorites() {
     const name = escapeHtml(item.成語);
 
     return `
-      <div class="favorite-list-item">
+      <div class="favorite-list-item" data-favorite-id="${id}">
         <button class="favorite-item-button" type="button" data-action="open" data-id="${id}">${name}</button>
-        <button class="favorite-remove-button" type="button" data-action="remove" data-id="${id}" aria-label="刪除收藏：${name}">x</button>
+        <button class="favorite-remove-button" type="button" data-action="remove" data-id="${id}" aria-label="刪除收藏：${name}">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
     `;
   }).join("");
 
+  els.favoritesList.querySelectorAll(".favorite-list-item").forEach(item => {
+    item.addEventListener("pointerdown", handleFavoritePointerDown);
+    item.addEventListener("mousedown", handleFavoritePointerDown);
+  });
+
   els.favoritesList.querySelectorAll("[data-action]").forEach(button => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", event => {
+      if (suppressFavoriteClick) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
       const item = saved.find(entry => String(entry.編號 || entry.成語) === button.dataset.id);
       if (!item) return;
 
@@ -714,6 +739,141 @@ function renderFavorites() {
       updateLocationFromState(item.編號 || item.成語, true);
     });
   });
+}
+
+function syncFavoritesCount(count = state.favorites.size) {
+  els.favoritesCount.textContent = `${count.toLocaleString("zh-TW")} 筆`;
+}
+
+function handleFavoritePointerDown(event) {
+  if (favoritePointerDrag) return;
+  if (event.button !== 0 || event.target.closest(".favorite-remove-button")) return;
+
+  const item = event.currentTarget;
+  const favoriteId = item.dataset.favoriteId || "";
+  if (!favoriteId) return;
+
+  favoritePointerDrag = {
+    id: favoriteId,
+    pointerId: getFavoritePointerId(event),
+    source: item,
+    startX: event.clientX,
+    startY: event.clientY,
+    targetId: "",
+    placeAfterTarget: false,
+    isDragging: false
+  };
+}
+
+function handleFavoritePointerMove(event) {
+  if (!favoritePointerDrag || favoritePointerDrag.pointerId !== getFavoritePointerId(event)) return;
+
+  const deltaX = event.clientX - favoritePointerDrag.startX;
+  const deltaY = event.clientY - favoritePointerDrag.startY;
+  const distance = Math.hypot(deltaX, deltaY);
+
+  if (!favoritePointerDrag.isDragging) {
+    if (distance < FAVORITE_DRAG_THRESHOLD) return;
+
+    favoritePointerDrag.isDragging = true;
+    favoritePointerDrag.source.classList.add("is-dragging");
+    suppressFavoriteClick = true;
+  }
+
+  event.preventDefault();
+  clearFavoriteDropMarkers();
+
+  const target = document
+    .elementFromPoint(event.clientX, event.clientY)
+    ?.closest(".favorite-list-item");
+
+  if (!target || !els.favoritesList.contains(target) || target.dataset.favoriteId === favoritePointerDrag.id) {
+    favoritePointerDrag.targetId = "";
+    return;
+  }
+
+  favoritePointerDrag.targetId = target.dataset.favoriteId || "";
+  favoritePointerDrag.placeAfterTarget = setFavoriteDropPosition(target, event.clientY);
+}
+
+function handleFavoritePointerUp(event) {
+  if (!favoritePointerDrag || favoritePointerDrag.pointerId !== getFavoritePointerId(event)) return;
+
+  const drag = favoritePointerDrag;
+  const shouldReorder = drag.isDragging && drag.targetId;
+
+  if (drag.isDragging) {
+    event.preventDefault();
+    suppressFavoriteClick = true;
+  }
+
+  cancelFavoritePointerDrag();
+
+  if (shouldReorder) {
+    reorderFavorite(drag.id, drag.targetId, drag.placeAfterTarget);
+  }
+}
+
+function cancelFavoritePointerDrag() {
+  const wasDragging = favoritePointerDrag?.isDragging;
+  favoritePointerDrag = null;
+  clearFavoriteDragState();
+
+  if (wasDragging) {
+    window.setTimeout(() => {
+      suppressFavoriteClick = false;
+    }, 0);
+  }
+}
+
+function getFavoritePointerId(event) {
+  return event.pointerId ?? "mouse";
+}
+
+function setFavoriteDropPosition(item, clientY) {
+  const dropAfter = isFavoriteDropAfter(item, clientY);
+  item.classList.toggle("is-drop-before", !dropAfter);
+  item.classList.toggle("is-drop-after", dropAfter);
+  return dropAfter;
+}
+
+function isFavoriteDropAfter(item, clientY) {
+  const rect = item.getBoundingClientRect();
+  return clientY > rect.top + rect.height / 2;
+}
+
+function clearFavoriteDropPosition(item) {
+  item.classList.remove("is-drop-before", "is-drop-after");
+}
+
+function clearFavoriteDropMarkers() {
+  els.favoritesList.querySelectorAll(".favorite-list-item").forEach(item => {
+    clearFavoriteDropPosition(item);
+  });
+}
+
+function clearFavoriteDragState() {
+  els.favoritesList.querySelectorAll(".favorite-list-item").forEach(item => {
+    item.classList.remove("is-dragging", "is-drop-before", "is-drop-after");
+  });
+}
+
+function reorderFavorite(sourceId, targetId, placeAfterTarget) {
+  const favoriteKeys = [...state.favorites];
+  const sourceIndex = favoriteKeys.indexOf(sourceId);
+  const targetIndex = favoriteKeys.indexOf(targetId);
+
+  if (sourceIndex === -1 || targetIndex === -1) return;
+
+  const [sourceKey] = favoriteKeys.splice(sourceIndex, 1);
+  let insertIndex = favoriteKeys.indexOf(targetId);
+  if (placeAfterTarget) insertIndex += 1;
+
+  favoriteKeys.splice(insertIndex, 0, sourceKey);
+  state.favorites = new Set(favoriteKeys);
+  saveFavorites();
+  renderFavorites();
+  setFavoritesStatus("已更新收藏順序");
 }
 
 function syncFavoritesTitle() {
