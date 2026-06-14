@@ -23,16 +23,11 @@ serve:
 	else \
 		BROWSER_SYNC=""; \
 	fi; \
+	if [ "$(OPEN_BROWSER)" = "1" ]; then \
+		(sleep 1; $(OPEN) '$(URL)' >/dev/null 2>&1) & \
+	fi; \
 	if [ -n "$$BROWSER_SYNC" ]; then \
-		if [ "$(OPEN_BROWSER)" = "1" ]; then \
-			OPEN_FLAG=--open; \
-		else \
-			OPEN_FLAG=--no-open; \
-		fi; \
-		$$BROWSER_SYNC start --server $(PUBLIC_DIR) --files "$(PUBLIC_DIR)/**/*" --host $(HOST) --port $(PORT) $$OPEN_FLAG; \
+		$$BROWSER_SYNC start --server $(PUBLIC_DIR) --files "$(PUBLIC_DIR)/**/*" --host $(HOST) --port $(PORT) --no-open; \
 	else \
-		if [ "$(OPEN_BROWSER)" = "1" ]; then \
-			(sleep 1; $(OPEN) '$(URL)' >/dev/null 2>&1) & \
-		fi; \
 		$(PYTHON) -m http.server $(PORT) --bind $(HOST) --directory $(PUBLIC_DIR); \
 	fi
