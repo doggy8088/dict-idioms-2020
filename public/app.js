@@ -22,6 +22,7 @@ const state = {
   query: "",
   matchMode: "any",
   filter: "main",
+  resultsMode: "main",
   currentPage: 1,
   openId: "",
   pronunciationMode: readPronunciationMode(),
@@ -467,6 +468,8 @@ function pickOpeningSet(items = state.idioms) {
 }
 
 function renderResults(items, options = {}) {
+  state.resultsMode = options.mode || (state.query ? "search" : "main");
+
   els.results.innerHTML = "";
 
   const isSearchMode = Boolean(state.query);
@@ -980,6 +983,16 @@ function toggleFavorite(item) {
   else state.favorites.add(key);
   saveFavorites();
   renderFavorites();
+
+  if (state.resultsMode === "favorites") {
+    const favorites = favoriteItems();
+    renderResults(favorites, {
+      label: `顯示 ${favorites.length} 筆收藏`,
+      mode: "favorites"
+    });
+    return;
+  }
+
   renderResults(searchIdioms());
 }
 
@@ -1030,7 +1043,10 @@ function renderFavorites() {
 
       els.input.value = "";
       state.query = "";
-      renderResults(favoriteItems(), { label: `顯示 ${saved.length} 筆收藏` });
+      renderResults(favoriteItems(), {
+        label: `顯示 ${saved.length} 筆收藏`,
+        mode: "favorites"
+      });
       openIdiomModal(item, true, "replace");
     });
   });
