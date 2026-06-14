@@ -44,9 +44,7 @@ const els = {
   favoritesCount: document.querySelector("#favoritesCount"),
   favoritesList: document.querySelector("#favoritesList"),
   favoritesStatus: document.querySelector("#favoritesStatus"),
-  importFavorites: document.querySelector("#importFavorites"),
-  exportFavorites: document.querySelector("#exportFavorites"),
-  importFavoritesFile: document.querySelector("#importFavoritesFile"),
+  shareFavorites: document.querySelector("#shareFavorites"),
   clearFavorites: document.querySelector("#clearFavorites"),
   modal: document.querySelector("#idiomModal"),
   modalKind: document.querySelector("#idiomModalKind"),
@@ -77,6 +75,7 @@ async function init() {
     state.idioms = Array.isArray(payload) ? payload : payload.idioms || [];
     state.idioms = state.idioms.map(prepareIdiom);
     state.idiomByName = new Map(state.idioms.map(item => [String(item.成語 || "").trim(), item]).filter(([name]) => name));
+    applyFavoritesFromFragment();
 
     els.dataStatus.textContent = `已載入 ${state.idioms.length.toLocaleString("zh-TW")} 筆成語`;
     setDailyCard();
@@ -180,22 +179,7 @@ function bindEvents() {
     if (isEditingFavoriteTitle()) commitFavoriteTitleEdit();
   });
 
-  els.importFavorites.addEventListener("click", () => {
-    els.importFavoritesFile.click();
-  });
-
-  els.importFavoritesFile.addEventListener("change", async () => {
-    const [file] = els.importFavoritesFile.files || [];
-    if (!file) return;
-
-    try {
-      await importFavoritesFromFile(file);
-    } finally {
-      els.importFavoritesFile.value = "";
-    }
-  });
-
-  els.exportFavorites.addEventListener("click", exportFavorites);
+  els.shareFavorites.addEventListener("click", shareFavoritesLink);
 
   els.clearFavorites.addEventListener("click", () => {
     state.favorites.clear();
@@ -1306,6 +1290,99 @@ function selectElementText(element) {
   const selection = window.getSelection();
   selection?.removeAllRanges();
   selection?.addRange(range);
+}
+
+async function shareFavoritesLink() {
+  const url = buildFavoritesShareUrl();
+
+  if (!state.favorites.size) {
+    setFavoritesStatus("目前沒有可分享的收藏");
+    return;
+  }
+
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+    await navigator.clipboard.writeText(url);
+    setFavoritesStatus("已複製收藏分享連結");
+  } catch {
+    window.prompt("複製收藏分享連結", url);
+    setFavoritesStatus("請手動複製分享連結");
+  }
+}
+
+function buildFavoritesShareUrl() {
+  const base = `${window.location.origin}${window.location.pathname}`;
+  const fragment = buildFavoritesShareFragment();
+  return `${base}#${fragment}`;
+}
+
+function buildFavoritesShareFragment() {
+  const favoriteIds = [...state.favorites]
+    .map(key => findIdiomByIdentifier(key))
+    .filter(Boolean)
+    .map(item => Number(item.編號))
+    .filter(Number.isFinite)
+    .map(id => id.toString(36));
+
+  const params = new URLSearchParams();
+  params.set("f", favoriteIds.join("."));
+
+  if (state.favoritesTitle !== DEFAULT_FAVORITES_TITLE) {
+    params.set("t", state.favoritesTitle);
+  }
+
+  return params.toString();
+}
+
+function applyFavoritesFromFragment() {
+  const imported = parseFavoritesShareFragment(window.location.hash);
+  if (!imported) return;
+
+  if (imported.title !== null) state.favoritesTitle = imported.title;
+  state.favorites = new Set(imported.favorites);
+  saveFavorites();
+  syncFavoritesTitle();
+
+  const ignored = imported.ignoredCount ? `，略過 ${imported.ignoredCount} 筆無法辨識資料` : "";
+  setFavoritesStatus(`已載入分享收藏 ${imported.favorites.length} 筆${ignored}`);
+}
+
+function parseFavoritesShareFragment(hash) {
+  const fragment = String(hash || "").replace(/^#/, "");
+  if (!fragment) return null;
+
+  const params = new URLSearchParams(fragment);
+  const encodedFavorites = params.get("f");
+  if (!encodedFavorites) return null;
+
+  const favorites = [];
+  let ignoredCount = 0;
+
+  encodedFavorites.split(".").forEach(value => {
+    if (!value) return;
+
+    const id = parseInt(value, 36);
+    if (!Number.isFinite(id)) {
+      ignoredCount += 1;
+      return;
+    }
+
+    const item = findIdiomByIdentifier(String(id));
+    if (!item) {
+      ignoredCount += 1;
+      return;
+    }
+
+    favorites.push(String(item.編號 || item.成語));
+  });
+
+  if (!favorites.length) return null;
+
+  return {
+    title: params.has("t") ? normalizeFavoriteTitle(params.get("t")) : null,
+    favorites: [...new Set(favorites)],
+    ignoredCount
+  };
 }
 
 function exportFavorites() {
