@@ -706,6 +706,15 @@ function scrollToResultsTitle() {
   });
 }
 
+function scrollToFavoritesTitle() {
+  requestAnimationFrame(() => {
+    const favoritesTitle = document.querySelector("#favorites-title");
+    if (!favoritesTitle) return;
+    const offsetTop = Math.max(0, favoritesTitle.getBoundingClientRect().top + window.scrollY - 50);
+    window.scrollTo({ top: offsetTop, behavior: "smooth" });
+  });
+}
+
 function createCard(item, index) {
   const card = els.template.content.firstElementChild.cloneNode(true);
   card.style.animationDelay = `${Math.min(index * 35, 420)}ms`;
@@ -1176,10 +1185,12 @@ function renderFavoriteCollections() {
       }
 
       const collectionId = button.dataset.favoriteListId || "";
-      if (!collectionId) return;
+  if (!collectionId) return;
 
       if (button.dataset.action === "remove") {
-        removeFavoriteCollectionById(collectionId);
+        removeFavoriteCollectionById(collectionId, {
+          shouldScrollToResults: false
+        });
         return;
       }
 
@@ -1247,7 +1258,7 @@ function switchFavoriteCollection(collectionId, options = {}) {
   syncFavoritesCount();
   renderFavoritesModeResults();
   if (shouldScrollToResults) {
-    scrollToResultsTitle();
+    scrollToFavoritesTitle();
   }
   saveFavorites();
 }
@@ -1256,32 +1267,33 @@ function removeFavoriteCollectionById(collectionId, options = {}) {
   if (collectionId === DEFAULT_FAVORITE_COLLECTION_ID) return;
 
   const shouldScrollToResults = options.shouldScrollToResults !== false;
+  return withPreservedScroll(() => {
+    const index = state.favoriteCollections.findIndex(item => item.id === collectionId);
+    if (index === -1) return;
 
-  const index = state.favoriteCollections.findIndex(item => item.id === collectionId);
-  if (index === -1) return;
+    const removedTitle = normalizeFavoriteTitle(state.favoriteCollections[index]?.title || DEFAULT_FAVORITES_TITLE);
+    state.favoriteCollections.splice(index, 1);
+    if (removedTitle) setFavoritesStatus(`已刪除收藏清單「${removedTitle}」`);
 
-  const removedTitle = normalizeFavoriteTitle(state.favoriteCollections[index]?.title || DEFAULT_FAVORITES_TITLE);
-  state.favoriteCollections.splice(index, 1);
-  if (removedTitle) setFavoritesStatus(`已刪除收藏清單「${removedTitle}」`);
-
-  if (state.activeFavoriteCollectionId === collectionId) {
-    state.activeFavoriteCollectionId = DEFAULT_FAVORITE_COLLECTION_ID;
-    const active = getActiveFavoriteCollection();
-    state.favorites = new Set(active ? active.favorites : []);
-    state.favoritesTitle = active ? active.title : DEFAULT_FAVORITES_TITLE;
-    syncFavoritesTitle();
-    renderFavorites();
-    syncFavoritesCount();
-    state.query = "";
-    els.input.value = "";
-    renderFavoritesModeResults();
-    if (shouldScrollToResults) {
-      scrollToResultsTitle();
+    if (state.activeFavoriteCollectionId === collectionId) {
+      state.activeFavoriteCollectionId = DEFAULT_FAVORITE_COLLECTION_ID;
+      const active = getActiveFavoriteCollection();
+      state.favorites = new Set(active ? active.favorites : []);
+      state.favoritesTitle = active ? active.title : DEFAULT_FAVORITES_TITLE;
+      syncFavoritesTitle();
+      renderFavorites();
+      syncFavoritesCount();
+      state.query = "";
+      els.input.value = "";
+      renderFavoritesModeResults();
+      if (shouldScrollToResults) {
+        scrollToFavoritesTitle();
+      }
     }
-  }
 
-  renderFavoriteCollections();
-  saveFavorites();
+    renderFavoriteCollections();
+    saveFavorites();
+  });
 }
 
 function addFavoriteCollection(rawCollection) {
@@ -1346,6 +1358,20 @@ function restoreScrollPosition(scrollPosition, attempts = 0) {
   if (attempts < 6) {
     window.requestAnimationFrame(() => restoreScrollPosition(scrollPosition, attempts + 1));
   }
+}
+
+function withPreservedScroll(action) {
+  const scrollPosition = captureScrollPosition();
+  const result = action();
+
+  if (result && typeof result.then === "function") {
+    return result.finally(() => {
+      restoreScrollPosition(scrollPosition);
+    });
+  }
+
+  restoreScrollPosition(scrollPosition);
+  return result;
 }
 
 function uniqueFavoriteCollectionTitle(baseTitle) {
@@ -1510,11 +1536,13 @@ function collapseFavoriteListItem(listItem, height) {
 }
 
 function removeFavoriteItem(item) {
-  applyFavoriteCollectionFavorites([...state.favorites].filter(value => value !== String(item.編號 || item.成語)));
-  saveFavorites();
-  renderFavorites();
-  renderResults(searchIdioms());
-  setFavoritesStatus(`已刪除「${item.成語}」`);
+  withPreservedScroll(() => {
+    applyFavoriteCollectionFavorites([...state.favorites].filter(value => value !== String(item.編號 || item.成語)));
+    saveFavorites();
+    renderFavorites();
+    renderResults(searchIdioms());
+    setFavoritesStatus(`已刪除「${item.成語}」`);
+  });
 }
 
 function createFavoriteRowAshEffect(listItem) {
