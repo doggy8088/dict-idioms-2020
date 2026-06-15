@@ -38,6 +38,7 @@ const els = {
   listContainer: document.querySelector("#listContainer"),
   listStatus: document.querySelector("#listStatus"),
   savedCount: document.querySelector("#savedCount"),
+  editorTitle: document.querySelector("#editor-title"),
   createSavedList: document.querySelector("#createSavedList"),
   editorHint: document.querySelector("#editorHint")
 };
@@ -208,11 +209,15 @@ function updateDraftHint() {
   const count = state.draft.validIds.length;
   if (state.activeListId) {
     const activeName = sanitizeListName((getListById(state.activeListId) || {}).name);
-    els.editorHint.textContent = `目前編輯：${listName || activeName}（${count} 筆）`;
+    const title = `目前編輯：${listName || activeName}（${count} 筆）`;
+    els.editorTitle.textContent = title;
+    els.editorHint.textContent = "";
     return;
   }
 
-  els.editorHint.textContent = `尚未選取既存清單，將另存為：「${listName || SHARE_DEFAULT_NAME}」（${count} 筆）`;
+  const title = `目前編輯：${listName || SHARE_DEFAULT_NAME}（${count} 筆）`;
+  els.editorTitle.textContent = title;
+  els.editorHint.textContent = "";
 }
 
 function maybeUpdateShareOutput() {
