@@ -1,9 +1,8 @@
 const DATA_URL = "dict_idioms_2020_20260324.min.json";
 const LIST_STORAGE_KEY = "dict-idioms-playlist-collections-v1";
-const SHARE_VERSION = "1";
 const SHARE_IDS_PARAM = "i";
+const SHARE_HASH_IDS_PARAM = "f";
 const SHARE_TITLE_PARAM = "t";
-const SHARE_VER_PARAM = "v";
 const SHARE_DEFAULT_NAME = "我的成語清單";
 const LIST_NAME_MAX = 32;
 
@@ -100,7 +99,7 @@ function bindEvents() {
   });
 
   els.newList.addEventListener("click", () => {
-    startNewDraft();
+    saveAsNewList();
   });
 
   els.clearForm.addEventListener("click", () => {
@@ -111,7 +110,25 @@ function bindEvents() {
     copyTextToClipboard(els.shareUrl.value, "網址");
   });
 
+  els.shareUrl.addEventListener("click", () => {
+    if (!els.shareUrl.value) return;
+    if (typeof els.shareUrl.select === "function") {
+      els.shareUrl.select();
+    }
+    els.shareUrl.setSelectionRange(0, els.shareUrl.value.length);
+    copyTextToClipboard(els.shareUrl.value, "網址");
+  });
+
   els.copyShareMessage.addEventListener("click", () => {
+    copyTextToClipboard(els.shareMessage.value, "訊息");
+  });
+
+  els.shareMessage.addEventListener("click", () => {
+    if (!els.shareMessage.value) return;
+    if (typeof els.shareMessage.select === "function") {
+      els.shareMessage.select();
+    }
+    els.shareMessage.setSelectionRange(0, els.shareMessage.value.length);
     copyTextToClipboard(els.shareMessage.value, "訊息");
   });
 
@@ -246,6 +263,29 @@ function startNewDraft() {
   setStatus("已清空為新清單模式，接著填入名稱與成語即可建立。");
 }
 
+function saveAsNewList() {
+  const name = sanitizeListName(state.draft.name || els.listName.value);
+  if (!state.draft.validIds.length) {
+    setStatus("目前沒有可儲存的成語，請先輸入正確的成語。");
+    return;
+  }
+
+  state.activeListId = "";
+  const newListId = upsertListById({
+    id: state.activeListId,
+    name,
+    ids: state.draft.validIds
+  });
+
+  if (newListId) {
+    state.activeListId = newListId;
+    applyListToForm(newListId);
+  }
+
+  renderSavedLists();
+  setStatus(`已另存新清單「${name}」`);
+}
+
 function clearDraftForm() {
   els.listName.value = "";
   els.idiomLines.value = "";
@@ -253,16 +293,23 @@ function clearDraftForm() {
 }
 
 function applyRandomIdiomsToInput() {
-  const randomRows = getRandomIdiomLines(10);
+  const currentValue = String(els.idiomLines.value || "").replace(/\r/g, "");
+  const currentRows = currentValue
+    .split("\n")
+    .map(row => String(row || "").trim())
+    .filter(Boolean);
+  const randomRows = getRandomIdiomLines(1, currentRows);
 
   if (!randomRows.length) {
-    setStatus("資料尚未載入完成，請稍候再試。");
+    setStatus("目前無法再新增成語，請稍後再試。");
     return;
   }
 
-  els.idiomLines.value = randomRows.join("\n");
+  const suffix = currentValue.trimEnd();
+  const idiom = randomRows[0];
+  els.idiomLines.value = suffix ? `${suffix}\n${idiom}` : idiom;
   updateDraftFromInputs();
-  setStatus(`已自動填入 ${randomRows.length} 筆成語，您可以再直接調整。`);
+  setStatus("已自動新增 1 筆成語到最後面，您可繼續點擊補齊更多。");
 }
 
 function parseIdiomLines(rawText) {
@@ -323,14 +370,19 @@ function parseIdiomLines(rawText) {
   return { rows, validIds, missingCount, duplicateCount, count: validIds.length };
 }
 
-function getRandomIdiomLines(count = 10) {
+function getRandomIdiomLines(count = 1, existingRows = []) {
   if (!Array.isArray(state.idioms) || !state.idioms.length || count <= 0) {
     return [];
   }
 
+  const existingSet = new Set((existingRows || [])
+    .map(value => normalizeText(value))
+    .filter(Boolean));
+
   const pool = [...state.idioms]
     .map(item => String(item?.成語 || "").trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter(value => !existingSet.has(normalizeText(value)));
 
   if (!pool.length) return [];
 
@@ -372,9 +424,12 @@ function renderSavedLists() {
     <div class="list-item ${item.id === state.activeListId ? "is-active" : ""}" data-list-id="${escapeHtml(item.id)}">
       <button class="list-item__open" type="button" data-action="open">${escapeHtml(item.name)}（${item.ids.length} 筆）</button>
       <div class="list-item__toolbar">
-        <button class="button button--secondary list-item-action" type="button" data-action="copy">複製</button>
-        <button class="button button--secondary list-item-action" type="button" data-action="delete">刪除</button>
+        <button class="button button--secondary list-item-action list-item-action--copy" type="button" data-action="copy">複製連結</button>
       </div>
+      <button class="button button--secondary list-item-action list-item-action--delete" type="button" data-action="delete" aria-label="刪除清單「${escapeHtml(item.name)}」" title="刪除">
+        <span class="list-item__icon" aria-hidden="true">×</span>
+        <span class="sr-only">刪除</span>
+      </button>
     </div>
   `).join("");
 }
@@ -498,19 +553,14 @@ function importSharedList(shared) {
 }
 
 function getSharedPayloadFromUrl() {
-  const url = new URL(window.location.href);
-  const encodedIds = url.searchParams.get(SHARE_IDS_PARAM);
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(String(window.location.hash || "").replace(/^#/, ""));
+  const encodedIds = hashParams.get(SHARE_HASH_IDS_PARAM) || searchParams.get(SHARE_IDS_PARAM);
   if (!encodedIds) return null;
 
-  const rawTitle = sanitizeListName(url.searchParams.get(SHARE_TITLE_PARAM));
+  const rawTitle = sanitizeListName(hashParams.get(SHARE_TITLE_PARAM) || searchParams.get(SHARE_TITLE_PARAM));
   const ids = decodeSharedIds(encodedIds);
   if (!ids.length) return null;
-
-  // 保留分享網址版本，供未來擴充
-  const version = url.searchParams.get(SHARE_VER_PARAM);
-  if (version) {
-    void version;
-  }
 
   window.history.replaceState({}, "", window.location.pathname);
   return { name: rawTitle || SHARE_DEFAULT_NAME, ids };
@@ -545,15 +595,17 @@ function buildShareParams(title, ids) {
     })
     .filter(Boolean);
 
-  params.set(SHARE_VER_PARAM, SHARE_VERSION);
-  params.set(SHARE_TITLE_PARAM, sanitizeListName(title));
-  params.set(SHARE_IDS_PARAM, encodedIds.join("."));
+  params.set(SHARE_HASH_IDS_PARAM, encodedIds.join("."));
+  const normalizedName = sanitizeListName(title);
+  if (normalizedName && normalizedName !== SHARE_DEFAULT_NAME) {
+    params.set(SHARE_TITLE_PARAM, normalizedName);
+  }
   return params.toString();
 }
 
 function buildShareUrl(name, ids) {
   const params = buildShareParams(name, ids);
-  return `${window.location.origin}${window.location.pathname}?${params}`;
+  return `${window.location.origin}/#${params}`;
 }
 
 function buildShareMessage(name, ids, url) {

@@ -2469,10 +2469,10 @@ input:focus-visible,
 }
 
 .list-item {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
-  align-items: center;
   border-radius: 16px;
   padding: 8px;
   border: 1px solid rgba(61, 47, 34, 0.16);
@@ -2506,6 +2506,43 @@ input:focus-visible,
   min-width: 64px;
   min-height: 38px;
   padding: 0 0.7rem;
+}
+
+.list-item-action--delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.85);
+  transition: opacity 140ms var(--ease-ui), transform 140ms var(--ease-ui), box-shadow 140ms var(--ease-ui);
+}
+
+.list-item-action--delete .list-item__icon {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #6e2119;
+}
+
+.list-item:hover .list-item-action--delete,
+.list-item:focus-within .list-item-action--delete {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.list-item:hover .list-item__open,
+.list-item:focus-within .list-item__open {
+  padding-right: 2.35rem;
 }
 
 @media (max-width: 640px) {

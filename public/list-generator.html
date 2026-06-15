@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Chocolate+Classical+Sans&family=Noto+Serif+TC:wght@600;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260616-08">
+  <link rel="stylesheet" href="styles.css?v=20260616-09">
 </head>
 <body>
   <a class="skip-link" href="#generator-panel">跳到清單製作區</a>
@@ -28,7 +28,7 @@
       <div class="hero__copy">
         <p class="eyebrow">教師專用工具</p>
         <h1 id="generator-title">成語收藏清單產生器</h1>
-        <p class="hero__lead">一位老師一個清單，直接把想用的成語逐行打進去。輸入中會即時提醒是否在資料庫中，並可直接複製分享網址與訊息。</p>
+        <p class="hero__lead">每位老師可建立自己的清單，將要用的成語逐行輸入。系統會即時提示是否在資料庫中，並可直接複製分享網址與訊息。</p>
         <div class="hero__actions" aria-label="快速操作">
           <a class="button button--primary" href="index.html">回到成語查詢</a>
         </div>
@@ -55,7 +55,7 @@
       </div>
 
       <p class="builder-intro">
-        清單名稱與成語都會儲存到此瀏覽器中，建議每位老師先建立自己的幾組主題清單（例如「春季班單元一」「古文句」），之後可直接複製連結或訊息分享。
+        清單名稱與成語都會儲存到此瀏覽器中，建議每位老師先建立自己的幾組主題清單，清單名稱可以包含學校或班級名稱，也可以加入年級或任何名稱。例如「光復國小二年忠班國語」、「浣熊班成語複習」之類的，之後可直接複製連結或訊息分享。
       </p>
 
       <div class="builder-grid">
@@ -98,7 +98,7 @@
             <div class="builder-actions builder-actions--compact">
               <button class="button button--primary" id="copyShareUrl" type="button" disabled>複製網址</button>
               <button class="button button--secondary" id="copyShareMessage" type="button" disabled>複製訊息＋網址</button>
-              <a class="button button--kid-glass" id="openShare" href="index.html" target="_blank" rel="noopener" aria-disabled="true">預覽分享清單</a>
+              <a class="button button--secondary" id="openShare" href="index.html" target="_blank" rel="noopener" aria-disabled="true">預覽分享清單</a>
             </div>
           </div>
         </section>
@@ -130,6 +130,6 @@
     </p>
   </footer>
 
-  <script src="list-generator.js?v=20260616-08" defer></script>
+  <script src="list-generator.js?v=20260616-10" defer></script>
 </body>
 </html>
