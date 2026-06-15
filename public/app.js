@@ -176,11 +176,7 @@ function bindEvents() {
   els.randomTop.addEventListener("click", () => {
     const item = randomMainIdiom();
     if (!item) return;
-    els.input.value = item.成語;
-    state.query = normalize(item.成語);
-    renderResults([item]);
-    openIdiomModal(item);
-    document.querySelector("#results-title").scrollIntoView({ behavior: "smooth", block: "start" });
+    openIdiomModal(item, false);
   });
 
   els.dailyCard.addEventListener("click", () => {
