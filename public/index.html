@@ -51,12 +51,13 @@
           <a class="button button--primary" href="#search-panel">查成語</a>
           <button class="button button--secondary" id="randomTop" type="button">抽卡去</button>
           <a class="button button--kid-glass" href="https://idiom.gh.miniasp.com/" id="idiomGameButton" target="_blank" rel="noopener">玩遊戲</a>
-          <a class="button button--secondary" href="list-generator.html">收藏清單產生器</a>
+        <a class="button button--secondary" href="list-generator.html" style="display: none;">收藏清單產生器</a>
         </div>
       </div>
       <aside class="memory-card" aria-label="今日成語卡">
         <span class="memory-card__label">今日成語卡</span>
         <strong id="dailyIdiom">載入中</strong>
+        <button id="dailyPronunciation" class="pronunciation daily-card-pronunciation" type="button" aria-label="今日成語發音"></button>
         <p id="dailyMeaning">正在翻開字典裡的一頁。</p>
       </aside>
     </section>
@@ -185,6 +186,6 @@
     </section>
   </div>
 
-  <script src="app.js?v=20260616-06" defer></script>
+  <script src="app.js?v=20260616-09" defer></script>
 </body>
 </html>

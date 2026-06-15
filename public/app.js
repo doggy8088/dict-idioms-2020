@@ -41,6 +41,7 @@ const els = {
   dataStatus: document.querySelector("#dataStatus"),
   dailyCard: document.querySelector(".memory-card"),
   dailyIdiom: document.querySelector("#dailyIdiom"),
+  dailyPronunciation: document.querySelector("#dailyPronunciation"),
   dailyMeaning: document.querySelector("#dailyMeaning"),
   form: document.querySelector("#searchForm"),
   input: document.querySelector("#queryInput"),
@@ -2520,10 +2521,28 @@ function setDailyCard() {
   if (!item) return;
   state.dailyItem = item;
   els.dailyIdiom.textContent = item.成語;
+  setupPronunciationToggle(els.dailyPronunciation, buildDailyPronunciationItem(item), { primaryOnly: true });
   els.dailyMeaning.textContent = firstMeaning(item.釋義) || "今天先認識這一句，再把它放進生活裡。";
   els.dailyCard.setAttribute("tabindex", "0");
   els.dailyCard.setAttribute("role", "button");
   els.dailyCard.setAttribute("aria-label", `開啟今日成語卡：${item.成語}`);
+}
+
+function buildDailyPronunciationItem(item) {
+  const firstZhuyin = getFirstPronunciation(item?.注音);
+  const firstPinyin = getFirstPronunciation(item?.漢語拼音);
+
+  return {
+    ...item,
+    注音: firstZhuyin || item?.注音,
+    漢語拼音: firstPinyin || item?.漢語拼音
+  };
+}
+
+function getFirstPronunciation(value) {
+  const groups = splitPronunciationGroups(value);
+  if (!groups.length) return "";
+  return groups[0].syllables.join(" ");
 }
 
 function randomMainIdiom() {
