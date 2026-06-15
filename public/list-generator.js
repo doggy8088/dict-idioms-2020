@@ -3,7 +3,7 @@ const LIST_STORAGE_KEY = "dict-idioms-playlist-collections-v1";
 const SHARE_IDS_PARAM = "i";
 const SHARE_HASH_IDS_PARAM = "f";
 const SHARE_TITLE_PARAM = "t";
-const SHARE_DEFAULT_NAME = "我的成語清單";
+const SHARE_DEFAULT_NAME = "我的收藏 (1)";
 const LIST_NAME_MAX = 32;
 
 const state = {
@@ -297,7 +297,7 @@ function saveAsNewList() {
 }
 
 function clearDraftForm() {
-  els.listName.value = "";
+  els.listName.value = SHARE_DEFAULT_NAME;
   els.idiomLines.value = "";
   updateDraftFromInputs();
 }
