@@ -3,7 +3,7 @@ const LIST_STORAGE_KEY = "dict-idioms-playlist-collections-v1";
 const SHARE_IDS_PARAM = "i";
 const SHARE_HASH_IDS_PARAM = "f";
 const SHARE_TITLE_PARAM = "t";
-const SHARE_DEFAULT_NAME = "我的收藏 (1)";
+const SHARE_DEFAULT_NAME = "我的成語收藏";
 const LIST_NAME_MAX = 32;
 
 const state = {
@@ -228,6 +228,25 @@ function updateDraftHint() {
   els.editorHint.textContent = "";
 }
 
+function getDefaultListName() {
+  const names = new Set(
+    state.lists
+      .map(item => sanitizeListName(item?.name))
+      .filter(Boolean)
+  );
+
+  if (!names.has(SHARE_DEFAULT_NAME)) {
+    return SHARE_DEFAULT_NAME;
+  }
+
+  let index = 2;
+  while (names.has(`${SHARE_DEFAULT_NAME} (${index})`)) {
+    index += 1;
+  }
+
+  return `${SHARE_DEFAULT_NAME} (${index})`;
+}
+
 function updateIdiomCountHint(totalCount) {
   if (!els.idiomCount) return;
   const count = Number.parseInt(totalCount, 10);
@@ -311,7 +330,7 @@ function saveAsNewList() {
 }
 
 function clearDraftForm() {
-  els.listName.value = SHARE_DEFAULT_NAME;
+  els.listName.value = getDefaultListName();
   els.idiomLines.value = "";
   updateListNameInputState();
   updateDraftFromInputs();
