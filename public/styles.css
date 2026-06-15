@@ -2400,6 +2400,12 @@ input:focus-visible,
   font-weight: 500;
 }
 
+.builder-field-hint {
+  margin: 0.35rem 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .builder-random-btn {
   min-width: 84px;
   min-height: 38px;
