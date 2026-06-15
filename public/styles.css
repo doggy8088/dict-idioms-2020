@@ -2348,6 +2348,26 @@ input:focus-visible,
   font-weight: 500;
 }
 
+.builder-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 1rem;
+  margin-bottom: 0.55rem;
+}
+
+.builder-field-row label {
+  margin: 0;
+}
+
+.builder-random-btn {
+  min-width: 84px;
+  min-height: 38px;
+  padding: 0.48rem 0.85rem;
+  flex: 0 0 auto;
+}
+
 .builder-editor textarea:focus,
 .builder-editor input:focus {
   transform: translateY(-1px);

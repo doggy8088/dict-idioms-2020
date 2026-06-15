@@ -25,6 +25,7 @@ const els = {
   dataStatus: document.querySelector("#dataStatus"),
   listName: document.querySelector("#listName"),
   idiomLines: document.querySelector("#idiomLines"),
+  randomIdioms: document.querySelector("#randomIdioms"),
   validationSummary: document.querySelector("#validationSummary"),
   validationList: document.querySelector("#validationList"),
   saveList: document.querySelector("#saveList"),
@@ -88,6 +89,10 @@ function bindEvents() {
 
   els.idiomLines.addEventListener("input", () => {
     updateDraftFromInputs();
+  });
+
+  els.randomIdioms.addEventListener("click", () => {
+    applyRandomIdiomsToInput();
   });
 
   els.saveList.addEventListener("click", () => {
@@ -247,6 +252,19 @@ function clearDraftForm() {
   updateDraftFromInputs();
 }
 
+function applyRandomIdiomsToInput() {
+  const randomRows = getRandomIdiomLines(10);
+
+  if (!randomRows.length) {
+    setStatus("資料尚未載入完成，請稍候再試。");
+    return;
+  }
+
+  els.idiomLines.value = randomRows.join("\n");
+  updateDraftFromInputs();
+  setStatus(`已自動填入 ${randomRows.length} 筆成語，您可以再直接調整。`);
+}
+
 function parseIdiomLines(rawText) {
   const rows = [];
   const seen = new Set();
@@ -303,6 +321,38 @@ function parseIdiomLines(rawText) {
     });
 
   return { rows, validIds, missingCount, duplicateCount, count: validIds.length };
+}
+
+function getRandomIdiomLines(count = 10) {
+  if (!Array.isArray(state.idioms) || !state.idioms.length || count <= 0) {
+    return [];
+  }
+
+  const pool = [...state.idioms]
+    .map(item => String(item?.成語 || "").trim())
+    .filter(Boolean);
+
+  if (!pool.length) return [];
+
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  const unique = [];
+  const seen = new Set();
+  for (const idiom of pool) {
+    if (!seen.has(idiom)) {
+      seen.add(idiom);
+      unique.push(idiom);
+    }
+
+    if (unique.length >= count) {
+      break;
+    }
+  }
+
+  return unique;
 }
 
 function renderSavedLists() {

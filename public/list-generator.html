@@ -68,10 +68,15 @@
           <label for="listName">清單名稱（必填）</label>
           <input id="listName" type="text" placeholder="例如：第一節成語複習區" maxlength="32" autocomplete="off">
 
-          <label for="idiomLines">成語設定（每行一個）</label>
+          <div class="builder-field-row">
+            <label for="idiomLines">成語設定（每行一個）</label>
+            <button class="button button--secondary builder-random-btn" id="randomIdioms" type="button">好手氣</button>
+          </div>
           <textarea id="idiomLines" rows="10" placeholder="一毛不拔
-勇敢
-自欺欺人" autocomplete="off" spellcheck="false"></textarea>
+掩耳盜鈴
+一丘之貉
+囫圇吞棗
+班門弄斧" autocomplete="off" spellcheck="false"></textarea>
 
           <p class="status" role="note">輸入方式：每一行只放一個成語。系統會在你輸入時即時顯示「已找到 / 重複 / 未找到」。</p>
 
