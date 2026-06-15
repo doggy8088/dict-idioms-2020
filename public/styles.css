@@ -1148,7 +1148,7 @@ input:focus-visible,
   background:
     linear-gradient(rgba(255, 250, 239, 0.78), rgba(255, 250, 239, 0.78)) padding-box,
     linear-gradient(135deg, rgba(49, 93, 115, 0.28), rgba(255, 255, 255, 0.45)) border-box;
-  font-size: 0.92rem;
+  font-size: 1rem;
   font-weight: 500;
   line-height: 1.2;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.62) inset;
@@ -1159,7 +1159,7 @@ input:focus-visible,
   top: -0.18em;
   left: 0.02em;
   vertical-align: baseline;
-  font-size: 1em;
+  font-size: 1.16em;
   line-height: 1;
   margin: 0;
 }
