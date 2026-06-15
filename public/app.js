@@ -2297,10 +2297,8 @@ function buildFavoritesShareFragment() {
 
   const params = new URLSearchParams();
   params.set("f", favoriteIds.join("."));
-
-  if (state.favoritesTitle !== DEFAULT_FAVORITES_TITLE) {
-    params.set("t", state.favoritesTitle);
-  }
+  const shareTitle = normalizeFavoriteTitle(state.favoritesTitle);
+  if (shareTitle) params.set("t", shareTitle);
 
   return params.toString();
 }
@@ -2547,7 +2545,7 @@ function getFirstPronunciation(value) {
 
 function randomMainIdiom() {
   const mainIdioms = state.idioms.filter(item => item._main);
-  return randomItem(mainIdioms.length ? mainIdioms : state.idioms);
+  return randomItem(mainIdioms);
 }
 
 function applySearchFromUrl() {

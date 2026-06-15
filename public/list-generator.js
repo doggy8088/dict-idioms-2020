@@ -123,12 +123,7 @@ function bindEvents() {
   });
 
   els.shareUrl.addEventListener("click", () => {
-    if (!els.shareUrl.value) return;
-    if (typeof els.shareUrl.select === "function") {
-      els.shareUrl.select();
-    }
-    els.shareUrl.setSelectionRange(0, els.shareUrl.value.length);
-    copyTextToClipboard(els.shareUrl.value, "網址");
+    copyShareFieldContent(els.shareUrl, "網址");
   });
 
   els.copyShareMessage.addEventListener("click", () => {
@@ -136,12 +131,7 @@ function bindEvents() {
   });
 
   els.shareMessage.addEventListener("click", () => {
-    if (!els.shareMessage.value) return;
-    if (typeof els.shareMessage.select === "function") {
-      els.shareMessage.select();
-    }
-    els.shareMessage.setSelectionRange(0, els.shareMessage.value.length);
-    copyTextToClipboard(els.shareMessage.value, "訊息");
+    copyShareFieldContent(els.shareMessage, "訊息");
   });
 
   els.openShare.addEventListener("click", event => {
@@ -661,9 +651,7 @@ function buildShareParams(title, ids) {
 
   params.set(SHARE_HASH_IDS_PARAM, encodedIds.join("."));
   const normalizedName = sanitizeListName(title);
-  if (normalizedName && normalizedName !== SHARE_DEFAULT_NAME) {
-    params.set(SHARE_TITLE_PARAM, normalizedName);
-  }
+  if (normalizedName) params.set(SHARE_TITLE_PARAM, normalizedName);
   return params.toString();
 }
 
@@ -691,6 +679,28 @@ async function copyTextToClipboard(rawText, label) {
   }
 
   window.prompt(`請手動複製${label}`, text);
+}
+
+async function copyShareFieldContent(field, fallbackLabel = "文字") {
+  const text = field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement ? String(field.value || "").trim() : "";
+  if (!text) return;
+
+  if (typeof field.focus === "function") field.focus();
+  if (typeof field.select === "function") field.select();
+  if (typeof field.setSelectionRange === "function") {
+    field.setSelectionRange(0, field.value.length);
+  }
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+  } catch {
+    // fallback to prompt below
+  }
+
+  window.prompt(`請手動複製${fallbackLabel}`, text);
 }
 
 function setCopyFeedback(label) {
