@@ -425,11 +425,8 @@ function renderSavedLists() {
       <button class="list-item__open" type="button" data-action="open">${escapeHtml(item.name)}（${item.ids.length} 筆）</button>
       <div class="list-item__toolbar">
         <button class="button button--secondary list-item-action list-item-action--copy" type="button" data-action="copy">複製連結</button>
+        <button class="button button--secondary list-item-action list-item-action--delete" type="button" data-action="delete" aria-label="刪除清單「${escapeHtml(item.name)}」">刪除</button>
       </div>
-      <button class="button button--secondary list-item-action list-item-action--delete" type="button" data-action="delete" aria-label="刪除清單「${escapeHtml(item.name)}」" title="刪除">
-        <span class="list-item__icon" aria-hidden="true">×</span>
-        <span class="sr-only">刪除</span>
-      </button>
     </div>
   `).join("");
 }
