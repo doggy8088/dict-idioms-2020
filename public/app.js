@@ -2916,10 +2916,18 @@ function renderHighlightedPlainText(text, highlightTerm = "") {
 }
 
 function setupPronunciationToggle(button, item, options = {}) {
-  const zhuyin = cleanText(item.注音);
-  const pinyin = cleanText(item.漢語拼音);
+  const itemId = String(item?.編號 || "").trim();
+  const zhuyin = normalizePronunciationValue(itemId, item?.注音, "zhuyin");
+  const pinyin = normalizePronunciationValue(itemId, item?.漢語拼音, "pinyin");
   const hasBoth = Boolean(zhuyin && pinyin);
-  button._pronunciation = { zhuyin, pinyin, hasBoth, primaryOnly: Boolean(options.primaryOnly) };
+  const pronunciationLabelMode = itemId === "413" ? "preserve" : "standard";
+  button._pronunciation = {
+    zhuyin,
+    pinyin,
+    hasBoth,
+    primaryOnly: Boolean(options.primaryOnly),
+    pronunciationLabelMode
+  };
 
   button.onclick = event => {
     event.stopPropagation();
@@ -2928,6 +2936,15 @@ function setupPronunciationToggle(button, item, options = {}) {
   };
 
   renderPronunciationButton(button);
+}
+
+function normalizePronunciationValue(id, value, field) {
+  const text = cleanText(value);
+  if (String(id || "") !== "413") return text;
+  if (field !== "zhuyin" && field !== "pinyin") return text;
+  return text
+    .replace(/([^\s（])(?=(（[一二三四五六七八九十]+）))/gu, "$1 ")
+    .replace(/（[一二三四五六七八九十]+）(?=[^\s（])/gu, "$& ");
 }
 
 function renderZhuyinSyllables(value) {
@@ -2944,7 +2961,12 @@ function renderPronunciationSyllables(value, options = {}) {
     const syllables = group.syllables
       .map(syllable => `<span class="pronunciation__syllable">${renderPronunciationSyllable(syllable, shouldRenderToneAsSup)}</span>`)
       .join("");
-    const labelText = options.primaryOnly ? "" : pronunciationGroupLabel(group.label, index, hasVariants);
+    const labelText = options.primaryOnly ? "" : pronunciationGroupLabel(
+      group.label,
+      index,
+      hasVariants,
+      options.pronunciationLabelMode
+    );
     const label = labelText ? `<span class="pronunciation__variant-label">${escapeHtml(labelText)}</span>` : "";
 
     return `<span class="pronunciation__group">${label}${syllables}</span>`;
@@ -2968,7 +2990,8 @@ function renderPronunciationSyllable(syllable, shouldRenderToneAsSup) {
     .join("");
 }
 
-function pronunciationGroupLabel(label, index, hasVariants) {
+function pronunciationGroupLabel(label, index, hasVariants, mode = "standard") {
+  if (mode === "preserve") return label || "";
   if (label.includes("變")) return "變讀";
   if (hasVariants && index === 0) return "本音";
   return label.replace(/[（）]/g, "");
@@ -3008,7 +3031,11 @@ function renderPronunciationButton(button) {
 
   button.classList.toggle("is-zhuyin", mode === "zhuyin");
   button.classList.toggle("is-pinyin", mode === "pinyin");
-  button.innerHTML = renderPronunciationSyllables(text, { primaryOnly: data.primaryOnly, renderToneAsSup: mode === "zhuyin" });
+  button.innerHTML = renderPronunciationSyllables(text, {
+    primaryOnly: data.primaryOnly,
+    renderToneAsSup: mode === "zhuyin",
+    pronunciationLabelMode: data.pronunciationLabelMode || "standard"
+  });
   button.disabled = !data.hasBoth;
   button.setAttribute("aria-label", data.hasBoth ? `${label}，點擊切換${mode === "zhuyin" ? "拼音" : "注音"}` : label);
 }
