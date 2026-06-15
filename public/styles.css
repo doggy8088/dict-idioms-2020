@@ -264,6 +264,18 @@ h1 {
   gap: 16px;
 }
 
+.panel__title-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.builder-side-button {
+  min-height: 40px;
+  padding: 0.45rem 0.82rem;
+}
+
 .hero__actions {
   justify-content: flex-start;
   flex-wrap: wrap;
@@ -2134,6 +2146,11 @@ input:focus-visible,
 
   .search-box {
     grid-template-columns: 1fr;
+  }
+
+  .panel__title-row-actions {
+    align-self: flex-start;
+    width: 100%;
   }
 
   .button--search {

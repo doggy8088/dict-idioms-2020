@@ -38,6 +38,7 @@ const els = {
   listContainer: document.querySelector("#listContainer"),
   listStatus: document.querySelector("#listStatus"),
   savedCount: document.querySelector("#savedCount"),
+  createSavedList: document.querySelector("#createSavedList"),
   editorHint: document.querySelector("#editorHint")
 };
 
@@ -104,6 +105,10 @@ function bindEvents() {
 
   els.clearForm.addEventListener("click", () => {
     clearDraftForm();
+  });
+
+  els.createSavedList.addEventListener("click", () => {
+    startNewDraft();
   });
 
   els.copyShareUrl.addEventListener("click", () => {
