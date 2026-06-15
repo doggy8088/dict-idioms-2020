@@ -38,6 +38,7 @@ const els = {
   listContainer: document.querySelector("#listContainer"),
   listStatus: document.querySelector("#listStatus"),
   savedCount: document.querySelector("#savedCount"),
+  idiomCount: document.querySelector("#idiomCount"),
   editorTitle: document.querySelector("#editor-title"),
   createSavedList: document.querySelector("#createSavedList"),
   editorHint: document.querySelector("#editorHint")
@@ -180,6 +181,7 @@ function updateDraftFromInputs() {
   state.draft.rawLines = raw;
   state.draft.rows = parsed.rows;
   state.draft.validIds = parsed.validIds;
+  updateIdiomCountHint(state.draft.validIds.length);
 
   if (!raw.trim()) {
     els.validationSummary.textContent = "請輸入至少一筆成語，並在每行只放一個成語。";
@@ -213,18 +215,23 @@ function updateDraftFromInputs() {
 
 function updateDraftHint() {
   const listName = sanitizeListName(state.draft.name);
-  const count = state.draft.validIds.length;
   if (state.activeListId) {
     const activeName = sanitizeListName((getListById(state.activeListId) || {}).name);
-    const title = `目前編輯：${listName || activeName}（${count} 筆）`;
+    const title = `目前編輯：${listName || activeName}`;
     els.editorTitle.textContent = title;
     els.editorHint.textContent = "";
     return;
   }
 
-  const title = `建立清單：${listName || SHARE_DEFAULT_NAME}（${count} 筆）`;
+  const title = `建立清單：${listName || SHARE_DEFAULT_NAME}`;
   els.editorTitle.textContent = title;
   els.editorHint.textContent = "";
+}
+
+function updateIdiomCountHint(totalCount) {
+  if (!els.idiomCount) return;
+  const count = Number.parseInt(totalCount, 10);
+  els.idiomCount.textContent = `（${Number.isFinite(count) ? count : 0} 筆）`;
 }
 
 function maybeUpdateShareOutput() {
@@ -484,6 +491,7 @@ function applyListToForm(listId, options = {}) {
     .map(id => state.idiomById.get(id)?.成語 || id)
     .filter(Boolean)
     .join("\n");
+  updateIdiomCountHint(list.ids.length);
   updateListNameInputState();
 
   if (!options.preserveState) {

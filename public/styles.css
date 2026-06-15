@@ -2394,6 +2394,12 @@ input:focus-visible,
   margin: 0;
 }
 
+.builder-field-count {
+  margin-left: 0.35rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .builder-random-btn {
   min-width: 84px;
   min-height: 38px;
