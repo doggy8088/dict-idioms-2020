@@ -760,8 +760,8 @@ function renderDetails(container, item) {
   const blocks = [
     usageContextBlock(item["用法說明-使用類別"]),
     meaningBlock(item["用法說明-語義說明"]),
-    block("典故說明", item.典故說明),
     listBlock("用法例句", item["用法說明-例句"], 4, item.成語),
+    block("典故說明", item.典故說明),
     listBlock("書證", item.書證, 3),
     sourceBlock(item),
     identificationBlock(item),
@@ -2628,8 +2628,8 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
   const details = [
     usageContextBlock(item["用法說明-使用類別"]),
     meaningBlock(item["用法說明-語義說明"]),
-    block("典故說明", item.典故說明),
     listBlock("用法例句", item["用法說明-例句"], 8, item.成語),
+    block("典故說明", item.典故說明),
     listBlock("書證", item.書證, 10),
     sourceBlock(item),
     identificationBlock(item),
