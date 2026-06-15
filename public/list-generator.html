@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Chocolate+Classical+Sans&family=Noto+Serif+TC:wght@600;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260616-13">
+  <link rel="stylesheet" href="styles.css?v=20260616-16">
 </head>
 <body>
   <a class="skip-link" href="#generator-panel">跳到清單製作區</a>
@@ -64,7 +64,7 @@
             <h2 id="editor-title">目前編輯：光復國小二年忠班國語2（14 筆）</h2>
             <p id="editorHint" class="favorites-count"></p>
           </div>
-          <label for="listName">清單名稱（必填）</label>
+          <label for="listName">清單名稱<span class="required-mark" aria-hidden="true">*</span><span class="sr-only">（必填）</span></label>
           <input id="listName" type="text" placeholder="例如：第一節成語複習區" maxlength="32" autocomplete="off">
 
           <div class="builder-field-row">
@@ -130,6 +130,6 @@
     </p>
   </footer>
 
-  <script src="list-generator.js?v=20260616-15" defer></script>
+  <script src="list-generator.js?v=20260616-16" defer></script>
 </body>
 </html>

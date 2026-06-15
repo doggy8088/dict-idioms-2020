@@ -85,7 +85,12 @@ async function init() {
 
 function bindEvents() {
   els.listName.addEventListener("input", () => {
+    updateListNameInputState();
     updateDraftFromInputs();
+  });
+
+  els.listName.addEventListener("blur", () => {
+    updateListNameInputState();
   });
 
   els.idiomLines.addEventListener("input", () => {
@@ -165,6 +170,8 @@ function bindEvents() {
 }
 
 function updateDraftFromInputs() {
+  updateListNameInputState();
+
   const name = sanitizeListName(els.listName.value);
   const raw = els.idiomLines.value;
   const parsed = parseIdiomLines(raw);
@@ -299,7 +306,13 @@ function saveAsNewList() {
 function clearDraftForm() {
   els.listName.value = SHARE_DEFAULT_NAME;
   els.idiomLines.value = "";
+  updateListNameInputState();
   updateDraftFromInputs();
+}
+
+function updateListNameInputState() {
+  const isInvalid = !String(els.listName.value || "").trim();
+  els.listName.classList.toggle("is-invalid", isInvalid);
 }
 
 function applyRandomIdiomsToInput() {
@@ -471,6 +484,7 @@ function applyListToForm(listId, options = {}) {
     .map(id => state.idiomById.get(id)?.成語 || id)
     .filter(Boolean)
     .join("\n");
+  updateListNameInputState();
 
   if (!options.preserveState) {
     updateDraftFromInputs();
