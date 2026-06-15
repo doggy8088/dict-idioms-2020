@@ -215,7 +215,7 @@ function updateDraftHint() {
     return;
   }
 
-  const title = `新收藏：${listName || SHARE_DEFAULT_NAME}（${count} 筆）`;
+  const title = `建立清單：${listName || SHARE_DEFAULT_NAME}（${count} 筆）`;
   els.editorTitle.textContent = title;
   els.editorHint.textContent = "";
 }
