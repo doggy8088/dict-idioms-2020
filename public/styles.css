@@ -264,11 +264,13 @@ h1 {
   gap: 16px;
 }
 
-.panel__title-row-actions {
+.saved-list-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 10px;
+  margin-top: 0.58rem;
+  margin-bottom: 0.28rem;
 }
 
 .builder-side-button {
@@ -2148,9 +2150,9 @@ input:focus-visible,
     grid-template-columns: 1fr;
   }
 
-  .panel__title-row-actions {
-    align-self: flex-start;
-    width: 100%;
+  .saved-list-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .button--search {
@@ -2512,9 +2514,22 @@ input:focus-visible,
   border-radius: 12px;
   background: linear-gradient(135deg, #fffdf4, #fff4dd) padding-box, var(--paper);
   color: var(--ink);
+  display: block;
   text-align: left;
-  line-height: 1.5;
+  line-height: 1.4;
   min-height: 44px;
+}
+
+.list-item__meta {
+  display: block;
+  margin-bottom: 0.16rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.2;
+}
+
+.list-item__title {
+  display: block;
 }
 
 .list-item__toolbar {

@@ -427,13 +427,30 @@ function renderSavedLists() {
 
   els.listContainer.innerHTML = sorted.map(item => `
     <div class="list-item ${item.id === state.activeListId ? "is-active" : ""}" data-list-id="${escapeHtml(item.id)}">
-      <button class="list-item__open" type="button" data-action="open">${escapeHtml(item.name)}（${item.ids.length} 筆）</button>
+      <button class="list-item__open" type="button" data-action="open">
+        <span class="list-item__meta">更新：${formatTimestamp(item.updatedAt || item.createdAt)}</span>
+        <span class="list-item__title">${escapeHtml(item.name)}（${item.ids.length} 筆）</span>
+      </button>
       <div class="list-item__toolbar">
         <button class="button button--secondary list-item-action list-item-action--copy" type="button" data-action="copy">複製連結</button>
         <button class="button button--secondary list-item-action list-item-action--delete" type="button" data-action="delete" aria-label="刪除清單「${escapeHtml(item.name)}」">刪除</button>
       </div>
     </div>
   `).join("");
+}
+
+function formatTimestamp(timestamp) {
+  const value = Number.parseInt(timestamp, 10);
+  if (!Number.isFinite(value)) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("zh-Hant", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
 }
 
 function applyListToForm(listId, options = {}) {
