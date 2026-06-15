@@ -2342,6 +2342,10 @@ input:focus-visible,
   line-height: 1.95;
 }
 
+#shareMessage {
+  min-height: 153px;
+}
+
 .builder-editor label {
   display: inline-block;
   margin: 1rem 0 0.55rem;
