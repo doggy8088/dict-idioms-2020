@@ -487,8 +487,7 @@ function copyListShare(listId) {
   if (!list) return;
 
   const shareUrl = buildShareUrl(list.name, list.ids);
-  const shareMessage = buildShareMessage(list.name, list.ids, shareUrl);
-  copyTextToClipboard(`${shareMessage}`, "訊息");
+  copyTextToClipboard(`${shareUrl}`, "網址");
 }
 
 function upsertListById({ id, name, ids }) {
