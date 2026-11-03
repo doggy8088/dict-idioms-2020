@@ -1,5 +1,8 @@
 const CACHE_NAME = "dict-idioms-data-20260929-v1";
-const DATA_PATH = "/dict_idioms_2020_20260929.min.json";
+const DATA_PATHS = [
+  "/dict_idioms_2020_20260929.min.json",
+  "/dict_idioms_appendix_2020_20260929.min.json"
+];
 
 self.addEventListener("install", event => {
   event.waitUntil(self.skipWaiting());
@@ -22,7 +25,7 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  if (url.origin === location.origin && url.pathname === DATA_PATH) {
+  if (url.origin === location.origin && DATA_PATHS.includes(url.pathname)) {
     event.respondWith(cacheFirst(request));
   }
 });

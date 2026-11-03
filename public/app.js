@@ -1,4 +1,14 @@
 const DATA_URL = "dict_idioms_2020_20260929.min.json";
+const APPENDIX_DATA_URL = "dict_idioms_appendix_2020_20260929.min.json";
+const APPENDIX_KIND = "修訂本參考資料";
+const APPENDIX_ID_OFFSET = 100000;
+const FILTER_NAMES = ["all", "main", "phrase", "story", "quiz", "appendix"];
+const APPENDIX_EMPTY_FIELDS = [
+  "典源文獻名稱", "典源文獻內容", "典源注解", "典源參考資料", "典故說明", "書證",
+  "用法說明-語義說明", "用法說明-使用類別", "用法說明-例句",
+  "辨識-形音辨誤", "辨識-同", "辨識-異", "辨識-例句",
+  "近義成語", "反義成語", "參考詞語"
+];
 const MAX_RESULTS = 40;
 const FAVORITES_KEY = "dict-idioms-favorites";
 const DEFAULT_FAVORITES_TITLE = "我的收藏";
@@ -21,6 +31,8 @@ const favoriteSettings = readFavoritesSettings();
 const state = {
   idioms: [],
   idiomByName: new Map(),
+  appendixCount: 0,
+  searchFellBackToAppendix: false,
   query: "",
   matchMode: "any",
   filter: "main",
@@ -86,11 +98,13 @@ async function init() {
   await registerServiceWorker();
 
   try {
-    const payload = await loadData();
+    const [payload, appendixPayload] = await Promise.all([loadData(), loadAppendixData()]);
     if (!payload) throw new Error("資料載入失敗");
 
-    state.idioms = Array.isArray(payload) ? payload : payload.idioms || [];
-    state.idioms = state.idioms.map(prepareIdiom);
+    const mainIdioms = (Array.isArray(payload) ? payload : payload.idioms || []).map(prepareIdiom);
+    const appendixIdioms = (appendixPayload?.idioms || []).map(prepareAppendixIdiom);
+    state.appendixCount = appendixIdioms.length;
+    state.idioms = mainIdioms.concat(appendixIdioms);
     state.idiomByName = new Map(state.idioms.map(item => [String(item.成語 || "").trim(), item]).filter(([name]) => name));
     const sharedImport = applyFavoritesFromFragment();
     const shouldShowSharedFavorites = Boolean(sharedImport);
@@ -356,7 +370,21 @@ function setQuickPicks() {
   });
 }
 
-function prepareIdiom(item) {
+// 部分條目的「漢語拼音」欄混入注音符號（輕聲 ˙ㄏㄨ、兒化音 ㄊㄨㄟˇㄦ 等），載入時轉成拼音，顯示與搜尋才一致。
+// 含全形句點「．」的條目（豁出去）無法確定聲調，維持原樣。
+function cleanLeakedBopomofoPinyin(item) {
+  const pinyin = item.漢語拼音;
+  if (typeof pinyin !== "string" || pinyin.includes("．") || !/[ㄅ-ㄯ]/u.test(pinyin)) return item;
+
+  const converted = separatePronunciationTokens(pinyin)
+    .split(" ")
+    .map(token => bopomofoSyllableToPinyin(token) || token)
+    .join(" ");
+  return { ...item, 漢語拼音: converted };
+}
+
+function prepareIdiom(rawItem) {
+  const item = cleanLeakedBopomofoPinyin(rawItem);
   const quiz = parseIdentificationQuiz(item["辨識-例句"]);
 
   const searchable = [
@@ -378,17 +406,50 @@ function prepareIdiom(item) {
     ...item,
     _search: normalize(searchable),
     _main: item["主條成語／非主條成語"] === "主條成語",
+    _appendix: item["主條成語／非主條成語"] === APPENDIX_KIND,
     _quiz: quiz
   };
 }
 
-function searchIdioms() {
-  let items = state.idioms;
+function prepareAppendixIdiom(item) {
+  const filled = { ...item };
+  APPENDIX_EMPTY_FIELDS.forEach(field => {
+    if (filled[field] === undefined) filled[field] = "";
+  });
+  return prepareIdiom(filled);
+}
 
-  if (state.filter === "main") items = items.filter(item => item._main);
-  if (state.filter === "phrase") items = items.filter(item => item.參考詞語);
-  if (state.filter === "story") items = items.filter(item => item.典故說明);
-  if (state.filter === "quiz") items = items.filter(item => item._quiz);
+function sourceIdOf(item) {
+  return String(item.網站ID || item.編號 || "").trim();
+}
+
+function buildSourceUrl(item) {
+  if (item._appendix && item.網站ID) {
+    return `https://dict.idioms.moe.edu.tw/idiomView.jsp?ID=${encodeURIComponent(item.網站ID)}`;
+  }
+  return `https://dict.idioms.moe.edu.tw/idiomList.jsp?idiom=${encodeURIComponent(String(item.成語 || "").trim())}`;
+}
+
+function filterItemsByType(items, filter) {
+  if (filter === "main") return items.filter(item => item._main);
+  if (filter === "phrase") return items.filter(item => item.參考詞語 && !item._appendix);
+  if (filter === "story") return items.filter(item => item.典故說明);
+  if (filter === "quiz") return items.filter(item => item._quiz);
+  if (filter === "appendix") return items.filter(item => item._appendix);
+  return items;
+}
+
+function rankItems(items, queryPlan) {
+  return items
+    .map(item => ({ item, score: scoreItem(item, queryPlan) }))
+    .filter(entry => entry.score > 0)
+    .sort((a, b) => b.score - a.score || Number(a.item.編號) - Number(b.item.編號))
+    .map(entry => entry.item);
+}
+
+function searchIdioms() {
+  state.searchFellBackToAppendix = false;
+  const items = filterItemsByType(state.idioms, state.filter);
 
   const queryPlan = parseQueryPlan(state.query, state.matchMode);
 
@@ -398,11 +459,21 @@ function searchIdioms() {
     return pickOpeningSet(items);
   }
 
-  const sortedItems = items
-    .map(item => ({ item, score: scoreItem(item, queryPlan) }))
-    .filter(entry => entry.score > 0)
-    .sort((a, b) => b.score - a.score || Number(a.item.編號) - Number(b.item.編號))
-    .map(entry => entry.item);
+  let sortedItems = rankItems(items, queryPlan);
+
+  // 預設只看主條成語；若主條成語沒有同名結果，補入附錄（無結果時搜整個附錄、否則只補名稱命中者），
+  // 避免只收錄在修訂本參考資料的成語查不到。
+  if (state.filter === "main" && state.appendixCount) {
+    const nameMatches = item => queryPlan.terms.some(term => normalize(item.成語).includes(term));
+    if (!sortedItems.some(nameMatches)) {
+      const pool = state.idioms.filter(item => item._appendix && (!sortedItems.length || nameMatches(item)));
+      const extraItems = rankItems(pool, queryPlan);
+      if (extraItems.length) {
+        sortedItems = rankItems(sortedItems.concat(extraItems), queryPlan);
+        state.searchFellBackToAppendix = true;
+      }
+    }
+  }
 
   state.totalSearchResults = sortedItems.length;
   state.currentPage = normalizeCurrentPage(state.currentPage, state.totalSearchResults);
@@ -582,9 +653,10 @@ function renderResults(items, options = {}) {
   visibleItems.forEach((item, index) => fragment.appendChild(createCard(item, index)));
   els.results.appendChild(fragment);
 
+  const fallbackNote = state.searchFellBackToAppendix ? `（主條成語沒有同名結果，已補入${APPENDIX_KIND}）` : "";
   const label = options.label || (
     isSearchMode
-      ? `顯示 ${start + 1} ~ ${Math.min(start + MAX_RESULTS, totalResults)} 筆結果，共 ${totalResults} 筆成語`
+      ? `顯示 ${start + 1} ~ ${Math.min(start + MAX_RESULTS, totalResults)} 筆結果，共 ${totalResults} 筆成語${fallbackNote}`
       : `先放上 ${items.length} 張推薦卡`
   );
   els.resultCount.textContent = label;
@@ -715,7 +787,7 @@ function scrollToFavoritesTitle() {
 function createCard(item, index) {
   const card = els.template.content.firstElementChild.cloneNode(true);
   card.style.animationDelay = `${Math.min(index * 35, 420)}ms`;
-  card.querySelector(".idiom-card__number").textContent = `編號 ${item.編號 || "未載明"}`;
+  card.querySelector(".idiom-card__number").textContent = `編號 ${sourceIdOf(item) || "未載明"}`;
   card.querySelector("h3").textContent = item.成語 || "未命名成語";
   setupPronunciationToggle(card.querySelector(".pronunciation"), item, { primaryOnly: true });
   card.querySelector(".meaning").innerHTML = renderLinkedText(firstMeaning(item.釋義) || "此條目未提供釋義。");
@@ -2539,7 +2611,7 @@ function buildDailyPronunciationItem(item) {
 }
 
 function getFirstPronunciation(value) {
-  const groups = splitPronunciationGroups(value);
+  const groups = splitPronunciationGroups(separatePronunciationTokens(value));
   if (!groups.length) return "";
   return groups[0].syllables.join(" ");
 }
@@ -2562,7 +2634,7 @@ function applySearchFromUrl() {
   state.matchMode = ["exact", "prefix", "suffix", "any"].includes(matchParam) ? matchParam : "any";
   state.currentPage = Number.isFinite(page) && page > 0 ? page : 1;
 
-  state.filter = ["all", "main", "phrase", "story", "quiz"].includes(filter) ? filter : "main";
+  state.filter = FILTER_NAMES.includes(filter) ? filter : "main";
   els.filters.forEach(item => item.classList.toggle("is-active", item.dataset.filter === state.filter));
 
   state.openId = openId;
@@ -2629,12 +2701,11 @@ function openIdiomModal(item, andUpdateUrl = true, historyMode = "replace") {
   if (!item) return;
 
   const id = String(item.編號 || item.成語);
-  const sourceId = String(item.編號 || "").trim();
-  const idiomForSearch = String(item.成語 || "").trim();
+  const sourceId = sourceIdOf(item);
   state.openId = id;
   els.modalKind.textContent = item["主條成語／非主條成語"] || "成語條目";
   els.modalId.innerHTML = sourceId
-    ? `編號 <a href="https://dict.idioms.moe.edu.tw/idiomList.jsp?idiom=${encodeURIComponent(idiomForSearch)}" target="_blank" rel="noopener">${escapeHtml(sourceId)}</a>`
+    ? `編號 <a href="${escapeHtml(buildSourceUrl(item))}" target="_blank" rel="noopener">${escapeHtml(sourceId)}</a>`
     : "編號 未載明";
   els.modalTitle.textContent = item.成語 || "未命名成語";
   setupPronunciationToggle(els.modalPronunciation, item);
@@ -2775,6 +2846,17 @@ async function loadData() {
   const response = await fetch(DATA_URL);
   if (!response.ok) throw new Error(`資料載入失敗：${response.status}`);
   return response.json();
+}
+
+async function loadAppendixData() {
+  try {
+    const response = await fetch(APPENDIX_DATA_URL);
+    if (!response.ok) throw new Error(`附錄資料載入失敗：${response.status}`);
+    return await response.json();
+  } catch (error) {
+    console.warn(`${APPENDIX_KIND}載入失敗，僅使用正文資料`, error);
+    return null;
+  }
 }
 
 async function registerServiceWorker() {
@@ -2938,7 +3020,9 @@ function setupPronunciationToggle(button, item, options = {}) {
   const zhuyin = normalizePronunciationValue(itemId, item?.注音, "zhuyin");
   const pinyin = normalizePronunciationValue(itemId, item?.漢語拼音, "pinyin");
   const hasBoth = Boolean(zhuyin && pinyin);
-  const pronunciationLabelMode = itemId === "413" ? "preserve" : "standard";
+  const pronunciationLabelMode = itemId === "413" || hasNumberedGroupLabels(zhuyin) || hasNumberedGroupLabels(pinyin)
+    ? "preserve"
+    : "standard";
   button._pronunciation = {
     zhuyin,
     pinyin,
@@ -2956,13 +3040,51 @@ function setupPronunciationToggle(button, item, options = {}) {
   renderPronunciationButton(button);
 }
 
+// 來源注音、拼音偶有前後音節沒有空白隔開的髒資料，統一在呈現時補上空白：
+// 標籤（變）（又音）黏著音節、逗號頓號黏著音節、兒化音ㄦ黏在前一個音節，以及夾在音節間的全形句點「．」（只是分隔符號，直接移除）。
+function separatePronunciationTokens(value) {
+  return cleanText(value)
+    .replace(/．/gu, " ")
+    .replace(/（[^）]+）/gu, " $& ")
+    .replace(/[，、]/gu, " $& ")
+    .replace(/(\S)ㄦ/gu, "$1 ㄦ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
 function normalizePronunciationValue(id, value, field) {
   const text = cleanText(value);
-  if (String(id || "") !== "413") return text;
   if (field !== "zhuyin" && field !== "pinyin") return text;
-  return text
+  const separated = separatePronunciationTokens(text);
+  // 附錄注音的輕聲符號「˙」不顯示（與正文多數條目的寫法一致）；正文原有的標示不動。
+  const spaced = field === "zhuyin" && Number(id) >= APPENDIX_ID_OFFSET
+    ? separated.replace(/˙/gu, "")
+    : separated;
+  if (String(id || "") !== "413") return normalizeNumberedPronunciation(spaced);
+  return spaced
     .replace(/([^\s（])(?=(（[一二三四五六七八九十]+）))/gu, "$1 ")
     .replace(/（[一二三四五六七八九十]+）(?=[^\s（])/gu, "$& ");
+}
+
+// 修訂本參考資料的讀音標記：半形或全形括號的 (一)、(二)，且常與注音黏在一起。
+const NUMBERED_MARKER_PATTERN = /[(（][一二三四五六七八九十]+[)）]/gu;
+
+function normalizeNumberedPronunciation(text) {
+  const markers = text.match(NUMBERED_MARKER_PATTERN) || [];
+  if (!markers.length) return text;
+
+  // 單一標記只是用來區分同名條目（如被山帶河的 (一)、(二)），不顯示。
+  if (markers.length === 1) return text.replace(NUMBERED_MARKER_PATTERN, " ").replace(/\s+/gu, " ").trim();
+
+  // 同一條目有多組讀音時，轉成全形括號並補空白，沿用分組標籤顯示。
+  return text
+    .replace(NUMBERED_MARKER_PATTERN, marker => ` （${marker.slice(1, -1)}） `)
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function hasNumberedGroupLabels(value) {
+  return splitPronunciationGroups(value).some(group => /^（[一二三四五六七八九十]+）$/u.test(group.label));
 }
 
 function renderZhuyinSyllables(value) {
