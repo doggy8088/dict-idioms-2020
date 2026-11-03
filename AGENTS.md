@@ -6,8 +6,10 @@
 
 - `public/index.html`：頁面骨架與查詢介面。
 - `public/app.js`：搜尋、收藏、分頁、連結與分享邏輯。
+- `public/bopomofo-pinyin.js`：注音音節轉漢語拼音（修正拼音欄混入注音符號），需先於 `app.js` 載入。
 - `public/styles.css`：版面與元件樣式。
 - `public/dict_idioms_2020_20260929.min.json`：前端載入的精簡資料來源。
+- `public/dict_idioms_appendix_2020_20260929.min.json`：修訂本參考資料附錄（僅網站有、不在官方下載檔），與正文並行載入。
 - `dict_idioms_2020_20260929.*`：原始與精簡資料版本（根目錄）供比對與更新。
 - `build/`、`downloads/`：中繼/備份資料資料夾。
 - `docs/`：補充文件與規格說明。
