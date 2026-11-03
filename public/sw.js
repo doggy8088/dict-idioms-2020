@@ -1,5 +1,5 @@
-const CACHE_NAME = "dict-idioms-data-20260324-v1";
-const DATA_PATH = "/dict_idioms_2020_20260324.min.json";
+const CACHE_NAME = "dict-idioms-data-20260929-v1";
+const DATA_PATH = "/dict_idioms_2020_20260929.min.json";
 
 self.addEventListener("install", event => {
   event.waitUntil(self.skipWaiting());

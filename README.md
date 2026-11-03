@@ -8,12 +8,12 @@
 
 本專案整合教育部公開釋出的《成語典》內容，提供可直接載入前端應用的資料格式與基本結構，適合作為語文教學、研究、資料視覺化與文字分析的基礎資源。資料同時保留成語條目、音韻資訊、釋義、文獻脈絡與用法說明，並保有原始下載資料的保存位址，方便回溯與比對。
 
-本資料庫目前保存版本編號為 `2020_20260324`，包含以下主要內容：
+本資料庫目前保存版本編號為 `2020_20260929`，包含以下主要內容：
 
-- `dict_idioms_2020_20260324.json`：完整 JSON 資料。
-- `dict_idioms_2020_20260324.yml`：完整 YAML 資料。
-- `dict_idioms_2020_20260324.min.json`：精簡 JSON 資料。
-- `dict_idioms_2020_20260324.min.yml`：精簡 YAML 資料。
+- `dict_idioms_2020_20260929.json`：完整 JSON 資料。
+- `dict_idioms_2020_20260929.yml`：完整 YAML 資料。
+- `dict_idioms_2020_20260929.min.json`：精簡 JSON 資料。
+- `dict_idioms_2020_20260929.min.yml`：精簡 YAML 資料。
 - `downloads/`：官方原始下載檔與試算表備份。
 
 資料統計：
@@ -33,7 +33,7 @@
 │  ├─ app.js                 # 成語頁面互動邏輯
 │  ├─ styles.css             # 版面與元件樣式
 │  ├─ index.html             # 應用主頁
-│  ├─ dict_idioms_2020_20260324.min.json
+│  ├─ dict_idioms_2020_20260929.min.json
 │  └─ ...
 ├─ public/fonts/              # 字型資源
 ├─ public/images/             # 版面影像資源（含必要圖示）
@@ -46,7 +46,7 @@
 
 ## 資料結構總覽
 
-`dict_idioms_2020_20260324.json` 的頂層結構為一個物件，主要鍵名如下：
+`dict_idioms_2020_20260929.json` 的頂層結構為一個物件，主要鍵名如下：
 
 ```json
 {
@@ -143,6 +143,6 @@
 ## 下載原始資料（官方）
 
 1. 前往官方[下載頁](https://language.moe.gov.tw/001/Upload/Files/site_content/M0001/respub/dict_idiomsdict_download.html)
-2. 下載對應的原始檔案（例如 `dict_idioms_2020_20260324.json` 及關聯檔案）。
+2. 下載對應的原始檔案（例如 `dict_idioms_2020_20260929.json` 及關聯檔案）。
 3. 將原始檔放回本專案 `downloads/` 資料夾，供後續比對與版本更新。
 4. 若要更新最終使用資料，請依實際流程轉換並更新 `public/` 目錄對應檔案。

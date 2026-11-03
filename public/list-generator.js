@@ -1,4 +1,4 @@
-const DATA_URL = "dict_idioms_2020_20260324.min.json";
+const DATA_URL = "dict_idioms_2020_20260929.min.json";
 const LIST_STORAGE_KEY = "dict-idioms-playlist-collections-v1";
 const SHARE_IDS_PARAM = "i";
 const SHARE_HASH_IDS_PARAM = "f";

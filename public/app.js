@@ -1,4 +1,4 @@
-const DATA_URL = "dict_idioms_2020_20260324.min.json";
+const DATA_URL = "dict_idioms_2020_20260929.min.json";
 const MAX_RESULTS = 40;
 const FAVORITES_KEY = "dict-idioms-favorites";
 const DEFAULT_FAVORITES_TITLE = "我的收藏";
@@ -982,7 +982,8 @@ function splitPlaceholderSentence(sentence) {
 }
 
 function isCorrectMarker(value) {
-  return String(value || "").trim().includes("○");
+  const text = String(value || "").trim();
+  return text.includes("○") || text.includes("〇");
 }
 
 function bindIdentificationQuizEvents() {
